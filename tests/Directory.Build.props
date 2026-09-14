@@ -3,5 +3,12 @@
   <PropertyGroup>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <IsPackable>false</IsPackable>
+    <!--
+      CA1707 flags underscores in identifiers. Test method names in this solution deliberately use
+      underscore-separated phrases (e.g. `Entities_of_the_same_type_with_the_same_id_are_equal`) so
+      a failing test reads as a sentence in the test-runner output. That is a test-only convention,
+      so the rule is suppressed here rather than repo-wide in the parent Directory.Build.props.
+    -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
   </PropertyGroup>
 </Project>
