@@ -57,7 +57,7 @@ internal static class ArchitectureModel
             { Application, [Domain] },
             { Infrastructure, [Application] },
             { Api, [Application, Infrastructure] },
-            { Listener, [Application, Infrastructure] },
+            { Listener, [Application, Infrastructure] }
         };
 
     /// <summary>
@@ -100,16 +100,22 @@ internal static class ArchitectureModel
 
     /// <summary>
     /// The types in <paramref name="layer"/> that depend on any of <paramref name="forbidden"/>,
-    /// as a plain list of names.
+    /// each annotated with the reason the rule matched it.
     /// </summary>
     /// <remarks>
-    /// Wraps the one NetArchTest quirk worth hiding: <c>TestResult.FailingTypeNames</c> is null
-    /// rather than empty when a rule passes.
+    /// Note the blind spot this cannot see: a dependency on a type in the global namespace is
+    /// invisible to the matcher, because the forbidden names are namespace prefixes and such a type
+    /// has no namespace to match against. Keeping every type under its layer namespace is what
+    /// closes that hole, which is why the namespace convention is load-bearing rather than cosmetic.
     /// </remarks>
     internal static IReadOnlyList<string> TypesDependingOn(string layer, params string[] forbidden) =>
-        Types.InAssembly(LoadAssembly(layer))
+        (Types.InAssembly(LoadAssembly(layer))
             .ShouldNot()
             .HaveDependencyOnAny(forbidden)
             .GetResult()
-            .FailingTypeNames ?? [];
+            .FailingTypes ?? [])
+        .Select(type => string.IsNullOrWhiteSpace(type.Explanation)
+            ? type.FullName
+            : $"{type.FullName} ({type.Explanation})")
+        .ToArray();
 }
