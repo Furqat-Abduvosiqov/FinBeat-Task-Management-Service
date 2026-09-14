@@ -480,3 +480,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Claude Code worktrees and agent scratch space
+.claude/
+.superpowers/
