@@ -2,12 +2,6 @@
 
     <PropertyGroup>
         <IsTestProject>true</IsTestProject>
-        <!--
-            CA1707 (no underscores in member names) is a public-API rule. Test names are sentences
-            read by a human out of a failure report, not an API surface, so underscores are the
-            point. Move this to tests/Directory.Build.props if the other test projects want it too.
-        -->
-        <NoWarn>$(NoWarn);CA1707</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
@@ -15,6 +9,7 @@
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+        <PackageReference Include="FluentAssertions" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="NetArchTest.Rules" />
         <PackageReference Include="xunit" />

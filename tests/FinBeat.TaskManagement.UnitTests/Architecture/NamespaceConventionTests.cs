@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using FluentAssertions;
 
 namespace FinBeat.TaskManagement.UnitTests.Architecture;
 
@@ -10,7 +11,7 @@ namespace FinBeat.TaskManagement.UnitTests.Architecture;
 /// <remarks>
 /// Only the class-library layers are checked. The two hosts use top-level statements, and the
 /// compiler necessarily emits their entry point into the global namespace, so the rule is not
-/// satisfiable there.
+/// satisfiable there as written.
 /// </remarks>
 public sealed class NamespaceConventionTests
 {
@@ -28,15 +29,16 @@ public sealed class NamespaceConventionTests
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        Assert.True(
-            offenders.Length == 0,
-            ArchitectureModel.Describe(
-                $"Every type in '{layer}' must sit under the '{layer}' namespace — the architecture "
-                + "rules read namespaces to decide which layer a type belongs to, so a type filed "
-                + "elsewhere is invisible to them. Offending types:",
-                offenders));
+        offenders.Should().BeEmpty(
+            "every type in '{0}' must sit under the '{0}' namespace - the architecture rules read "
+            + "namespaces to decide which layer a type belongs to, so a type filed elsewhere is "
+            + "invisible to them",
+            layer);
     }
 
+    // Deliberately not NetArchTest's ResideInNamespaceStartingWith: that is a raw prefix match with
+    // no separator check, so a type in FinBeat.TaskManagement.DomainHelpers would satisfy the rule
+    // for the FinBeat.TaskManagement.Domain layer.
     private static bool ResidesUnder(string? candidate, string rootNamespace) =>
         candidate is not null
         && (string.Equals(candidate, rootNamespace, StringComparison.Ordinal)

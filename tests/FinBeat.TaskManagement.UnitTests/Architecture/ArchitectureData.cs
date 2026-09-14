@@ -6,11 +6,11 @@ namespace FinBeat.TaskManagement.UnitTests.Architecture;
 /// </summary>
 public static class ArchitectureData
 {
-    /// <summary>One case per layer.</summary>
-    public static TheoryData<string> AllLayers => ToData(ArchitectureModel.AllLayers);
+    public static TheoryData<string> AllLayers => new(ArchitectureModel.AllLayers);
 
-    /// <summary>One case per class-library layer, excluding the two executable hosts.</summary>
-    public static TheoryData<string> LibraryLayers => ToData(ArchitectureModel.LibraryLayers);
+    public static TheoryData<string> LibraryLayers => new(ArchitectureModel.LibraryLayers);
+
+    public static TheoryData<string> BusinessRuleLayers => new(ArchitectureModel.BusinessRuleLayers);
 
     /// <summary>
     /// One case per forbidden (layer, dependency) edge, so a failure names both ends of the edge
@@ -20,6 +20,7 @@ public static class ArchitectureData
     {
         get
         {
+            // TheoryData<T1, T2> has no collection initializer taking a sequence, so this stays a loop.
             var data = new TheoryData<string, string>();
 
             foreach (var layer in ArchitectureModel.AllLayers)
@@ -32,17 +33,5 @@ public static class ArchitectureData
 
             return data;
         }
-    }
-
-    private static TheoryData<string> ToData(IEnumerable<string> values)
-    {
-        var data = new TheoryData<string>();
-
-        foreach (var value in values)
-        {
-            data.Add(value);
-        }
-
-        return data;
     }
 }

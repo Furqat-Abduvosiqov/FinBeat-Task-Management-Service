@@ -172,3 +172,9 @@ dotnet_diagnostic.CA1727.severity = none
 # CA1852: recommends sealing internal types that have no subtypes in their assembly.
 # Fires on Api/Program.cs's sample WeatherForecast record.
 dotnet_diagnostic.CA1852.severity = none
+
+# CA1707: forbids underscores in member names. It is a public-API naming rule, and a test name is
+# a sentence a human reads out of a failure report, not an API surface. Scoped to test code so the
+# rule still applies to everything under src/.
+[tests/**/*.cs]
+dotnet_diagnostic.CA1707.severity = none

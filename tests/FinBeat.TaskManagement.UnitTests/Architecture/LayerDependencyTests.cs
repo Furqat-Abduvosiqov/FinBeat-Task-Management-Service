@@ -1,4 +1,4 @@
-using NetArchTest.Rules;
+using FluentAssertions;
 
 namespace FinBeat.TaskManagement.UnitTests.Architecture;
 
@@ -14,31 +14,25 @@ public sealed class LayerDependencyTests
 {
     [Theory]
     [MemberData(nameof(ArchitectureData.AllLayers), MemberType = typeof(ArchitectureData))]
-    public void Layer_assembly_can_be_loaded_and_inspected(string layer)
+    public void Layer_assembly_is_a_real_file_on_disk(string layer)
     {
+        // NetArchTest reads IL through Mono.Cecil, which needs a file rather than an in-memory image.
+        // This does not prove the assembly contains any types - while a layer is still empty the IL
+        // rules below genuinely have nothing to inspect, and the .csproj rules carry the weight.
         var assembly = ArchitectureModel.LoadAssembly(layer);
 
-        // Without a file on disk the rules below would silently inspect nothing and pass vacuously.
-        Assert.False(
-            string.IsNullOrEmpty(assembly.Location),
-            $"'{layer}' was loaded without a file location, so the architecture rules cannot read its IL.");
+        assembly.Location.Should().NotBeEmpty(
+            "'{0}' must be loadable from disk for the dependency rules to read its IL", layer);
     }
 
     [Theory]
     [MemberData(nameof(ArchitectureData.ForbiddenEdges), MemberType = typeof(ArchitectureData))]
     public void Layer_has_no_compiled_dependency_on_a_layer_further_out(string layer, string forbidden)
     {
-        var result = Types.InAssembly(ArchitectureModel.LoadAssembly(layer))
-            .ShouldNot()
-            .HaveDependencyOnAny(forbidden)
-            .GetResult();
-
-        Assert.True(
-            result.IsSuccessful,
-            ArchitectureModel.Describe(
-                $"'{layer}' depends on '{forbidden}', which sits further out in the architecture. "
-                + "Invert the dependency: declare the contract in the inner layer and implement it in "
-                + "the outer one. Offending types:",
-                result.FailingTypeNames ?? []));
+        ArchitectureModel.TypesDependingOn(layer, forbidden).Should().BeEmpty(
+            "'{0}' must not depend on '{1}', which sits further out in the architecture - invert it "
+            + "by declaring the contract in the inner layer and implementing it in the outer one",
+            layer,
+            forbidden);
     }
 }

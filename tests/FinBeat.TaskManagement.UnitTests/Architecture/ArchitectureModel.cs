@@ -1,20 +1,15 @@
 using System.Reflection;
+using NetArchTest.Rules;
 
 namespace FinBeat.TaskManagement.UnitTests.Architecture;
 
-/// <summary>
-/// The single place that describes this solution's Clean Architecture layering.
-/// Every rule in this folder is derived from the tables below, so re-shaping the solution is a
-/// one-file edit rather than a hunt through test methods.
-/// </summary>
-/// <remarks>
-/// The layering is the usual concentric one, with dependencies pointing strictly inward:
-/// <code>
-///   Api ─┐
-///        ├─&gt; Infrastructure ─&gt; Application ─&gt; Domain
-///   Listener ─┘
-/// </code>
-/// </remarks>
+// The single place that describes this solution's Clean Architecture layering. Every rule in this
+// folder is derived from what is here, so re-shaping the solution is a one-file edit rather than a
+// hunt through test methods.
+//
+//   Api ------+
+//             +--> Infrastructure --> Application --> Domain
+//   Listener -+
 internal static class ArchitectureModel
 {
     /// <summary>Enterprise core: entities, value objects, domain events, repository contracts. Depends on nothing.</summary>
@@ -36,18 +31,24 @@ internal static class ArchitectureModel
     internal static readonly string[] AllLayers = [Domain, Application, Infrastructure, Api, Listener];
 
     /// <summary>
-    /// The three class-library layers. The two hosts are excluded from conventions that top-level
+    /// The class-library layers. The two hosts are excluded from conventions that top-level
     /// statements make impossible to satisfy — the compiler emits an entry point into the global namespace.
     /// </summary>
     internal static readonly string[] LibraryLayers = [Domain, Application, Infrastructure];
 
     /// <summary>
-    /// References each project <em>must</em> declare.
+    /// The layers that carry business rules and so must stay free of delivery and persistence
+    /// technology. Named here rather than in a test attribute so a new inner layer is covered automatically.
+    /// </summary>
+    internal static readonly string[] BusinessRuleLayers = [Domain, Application];
+
+    /// <summary>
+    /// References each project must declare.
     /// </summary>
     /// <remarks>
-    /// Both hosts reference Infrastructure because a composition root is the one place allowed to know
-    /// the concrete adapters — that is where the DI container binds them to the interfaces the inner
-    /// layers declare. Nothing further in should ever do the same.
+    /// This is the one table that carries real editorial judgement, because it does not follow from
+    /// the layer ordering: both hosts name Application <em>and</em> Infrastructure, skipping a rank,
+    /// because a composition root binds the concrete adapters while also calling the use cases directly.
     /// </remarks>
     internal static readonly IReadOnlyDictionary<string, string[]> RequiredReferences =
         new Dictionary<string, string[]>(StringComparer.Ordinal)
@@ -60,32 +61,32 @@ internal static class ArchitectureModel
         };
 
     /// <summary>
-    /// References each project is <em>permitted</em> to declare — a superset of <see cref="RequiredReferences"/>.
+    /// References a project is permitted to declare: everything it already reaches transitively.
+    /// Naming an inner layer explicitly is a style choice; naming an outer one is a violation.
     /// </summary>
     /// <remarks>
-    /// The extra entries are all inner layers a project already reaches transitively; naming one
-    /// explicitly is a style choice, not an architecture violation. Naming an <em>outer</em> layer is,
-    /// which is why the two hosts never appear in anyone's list.
+    /// Derived from <see cref="RequiredReferences"/> rather than written out. A second hand-kept
+    /// table would fail open — widening a row silently removes cases from
+    /// <see cref="ForbiddenFor"/>, and a theory that generates fewer cases reports no error, so the
+    /// suite would go greener instead of red.
     /// </remarks>
-    internal static readonly IReadOnlyDictionary<string, string[]> AllowedReferences =
-        new Dictionary<string, string[]>(StringComparer.Ordinal)
-        {
-            { Domain, [] },
-            { Application, [Domain] },
-            { Infrastructure, [Application, Domain] },
-            { Api, [Application, Infrastructure, Domain] },
-            { Listener, [Application, Infrastructure, Domain] },
-        };
-
-    /// <summary>
-    /// The layers <paramref name="layer"/> must never depend on, derived from <see cref="AllowedReferences"/>
-    /// so the two can never drift apart.
-    /// </summary>
-    internal static string[] ForbiddenFor(string layer) =>
-        AllLayers
-            .Where(other => !string.Equals(other, layer, StringComparison.Ordinal))
-            .Where(other => !AllowedReferences[layer].Contains(other, StringComparer.Ordinal))
+    internal static string[] AllowedReferences(string layer) =>
+        RequiredReferences[layer]
+            .SelectMany(required => AllowedReferences(required).Prepend(required))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
+
+    /// <summary>The layers <paramref name="layer"/> must never depend on.</summary>
+    internal static string[] ForbiddenFor(string layer)
+    {
+        var allowed = AllowedReferences(layer);
+
+        return AllLayers
+            .Where(other => !string.Equals(other, layer, StringComparison.Ordinal))
+            .Where(other => !allowed.Contains(other, StringComparer.Ordinal))
+            .ToArray();
+    }
 
     /// <summary>
     /// Loads a layer's compiled assembly by name.
@@ -95,14 +96,20 @@ internal static class ArchitectureModel
     /// layer with no types yet offers nothing to anchor on. Loading by name keeps these rules working
     /// against an empty layer, which is exactly when a wrong reference is cheapest to correct.
     /// </remarks>
-    internal static Assembly LoadAssembly(string layer) => Assembly.Load(new AssemblyName(layer));
+    internal static Assembly LoadAssembly(string layer) => Assembly.Load(layer);
 
     /// <summary>
-    /// Renders a failure message that names every offender, so a violation is diagnosable from the
-    /// test output alone without re-running anything.
+    /// The types in <paramref name="layer"/> that depend on any of <paramref name="forbidden"/>,
+    /// as a plain list of names.
     /// </summary>
-    internal static string Describe(string headline, IEnumerable<string> offenders) =>
-        headline
-        + Environment.NewLine
-        + string.Join(Environment.NewLine, offenders.Select(offender => "  - " + offender));
+    /// <remarks>
+    /// Wraps the one NetArchTest quirk worth hiding: <c>TestResult.FailingTypeNames</c> is null
+    /// rather than empty when a rule passes.
+    /// </remarks>
+    internal static IReadOnlyList<string> TypesDependingOn(string layer, params string[] forbidden) =>
+        Types.InAssembly(LoadAssembly(layer))
+            .ShouldNot()
+            .HaveDependencyOnAny(forbidden)
+            .GetResult()
+            .FailingTypeNames ?? [];
 }
