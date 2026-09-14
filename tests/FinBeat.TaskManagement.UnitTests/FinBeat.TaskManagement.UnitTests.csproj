@@ -11,7 +11,6 @@
         </PackageReference>
         <PackageReference Include="FluentAssertions" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
-        <PackageReference Include="NetArchTest.eNhancedEdition" />
         <PackageReference Include="xunit" />
         <PackageReference Include="xunit.runner.visualstudio">
           <PrivateAssets>all</PrivateAssets>
@@ -19,17 +18,8 @@
         </PackageReference>
     </ItemGroup>
 
-    <!--
-        The architecture tests assert the layering of the whole solution, so this project
-        references every layer. The references are deliberately NOT a statement about what unit
-        tests may use - they exist so the rules can load each assembly and read each .csproj.
-    -->
     <ItemGroup>
         <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Domain\FinBeat.TaskManagement.Domain.csproj" />
-        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Application\FinBeat.TaskManagement.Application.csproj" />
-        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Infrastructure\FinBeat.TaskManagement.Infrastructure.csproj" />
-        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Api\FinBeat.TaskManagement.Api.csproj" />
-        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Listener\FinBeat.TaskManagement.Listener.csproj" />
     </ItemGroup>
 
     <ItemGroup>

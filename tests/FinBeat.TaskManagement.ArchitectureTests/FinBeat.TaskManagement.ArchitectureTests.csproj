@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="coverlet.collector">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="FluentAssertions" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="NetArchTest.eNhancedEdition" />
+        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit.runner.visualstudio">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <!--
+        Every layer, and every one named explicitly. The rules load each assembly to read its IL, so
+        this project has to see all of them; relying on a layer arriving transitively would make
+        these rules fail the moment the layer it came through stopped referencing it.
+
+        This is not a statement about what any other test project may use - it is the one project in
+        the solution whose subject is the whole dependency graph.
+    -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Domain\FinBeat.TaskManagement.Domain.csproj" />
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Contracts\FinBeat.TaskManagement.Contracts.csproj" />
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Application\FinBeat.TaskManagement.Application.csproj" />
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Infrastructure\FinBeat.TaskManagement.Infrastructure.csproj" />
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Api\FinBeat.TaskManagement.Api.csproj" />
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Listener\FinBeat.TaskManagement.Listener.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit"/>
+    </ItemGroup>
+
+</Project>

@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using FluentAssertions;
 
-namespace FinBeat.TaskManagement.UnitTests.Architecture;
+namespace FinBeat.TaskManagement.ArchitectureTests;
 
 // Keeps each layer's namespace and its assembly name in step, so a type's namespace is a reliable
 // statement about which layer it belongs to - which is what every other rule in this folder assumes.

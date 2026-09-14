@@ -1,6 +1,6 @@
 using System.Xml.Linq;
 
-namespace FinBeat.TaskManagement.UnitTests.Architecture;
+namespace FinBeat.TaskManagement.ArchitectureTests;
 
 // Locates project files and reads what they declare, so the architecture rules can be asserted
 // against the dependency graph the build *declares*. A reference added in the IDE but not yet used

@@ -1,7 +1,7 @@
 using System.Reflection;
 using NetArchTest.Rules;
 
-namespace FinBeat.TaskManagement.UnitTests.Architecture;
+namespace FinBeat.TaskManagement.ArchitectureTests;
 
 // The single place that describes this solution's Clean Architecture layering. Every rule in this
 // folder is derived from what is here, so re-shaping the solution is a one-file edit rather than a

@@ -1,4 +1,4 @@
-namespace FinBeat.TaskManagement.UnitTests.Architecture;
+namespace FinBeat.TaskManagement.ArchitectureTests;
 
 /// <summary>
 /// Theory data shared by the architecture rules, projected from <see cref="ArchitectureModel"/>
