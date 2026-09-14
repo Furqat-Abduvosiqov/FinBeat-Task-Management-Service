@@ -7,13 +7,28 @@ namespace FinBeat.TaskManagement.UnitTests.Architecture;
 // folder is derived from what is here, so re-shaping the solution is a one-file edit rather than a
 // hunt through test methods.
 //
-//   Api ------+
-//             +--> Infrastructure --> Application --> Domain
-//   Listener -+
+//   Api --> Infrastructure --> Application --+--> Domain
+//                                            |
+//   Listener --------------------------------+--> Contracts
+//
+// Api also names Application directly, and both hosts are composition roots. The Listener is a
+// separate deployable and shares only the wire format, never the model.
 internal static class ArchitectureModel
 {
     /// <summary>Enterprise core: entities, value objects, domain events, repository contracts. Depends on nothing.</summary>
     internal const string Domain = "FinBeat.TaskManagement.Domain";
+
+    /// <summary>
+    /// The published wire format: flat integration-event records shared between the service that
+    /// emits task-change events and the service that consumes them.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="Domain"/> on purpose. Domain events carry value objects with private
+    /// constructors, which serialize but cannot deserialize, and putting the aggregate on the wire
+    /// would couple two independently deployable services to one another's internals. This project
+    /// is the boundary that keeps the model off the wire, so it holds primitives and nothing else.
+    /// </remarks>
+    internal const string Contracts = "FinBeat.TaskManagement.Contracts";
 
     /// <summary>Use cases orchestrating the domain. Knows the domain; knows nothing of how it is stored or delivered.</summary>
     internal const string Application = "FinBeat.TaskManagement.Application";
@@ -24,17 +39,20 @@ internal static class ArchitectureModel
     /// <summary>HTTP delivery mechanism and composition root.</summary>
     internal const string Api = "FinBeat.TaskManagement.Api";
 
-    /// <summary>Worker delivery mechanism and composition root for the task-event listener service.</summary>
+    /// <summary>
+    /// The downstream listener service: receives task-change events and logs them. A separate
+    /// deployable, not a second front door onto the same core.
+    /// </summary>
     internal const string Listener = "FinBeat.TaskManagement.Listener";
 
     /// <summary>Every layer of the solution, innermost first.</summary>
-    internal static readonly string[] AllLayers = [Domain, Application, Infrastructure, Api, Listener];
+    internal static readonly string[] AllLayers = [Domain, Contracts, Application, Infrastructure, Api, Listener];
 
     /// <summary>
     /// The class-library layers. The two hosts are excluded from conventions that top-level
     /// statements make impossible to satisfy — the compiler emits an entry point into the global namespace.
     /// </summary>
-    internal static readonly string[] LibraryLayers = [Domain, Application, Infrastructure];
+    internal static readonly string[] LibraryLayers = [Domain, Contracts, Application, Infrastructure];
 
     /// <summary>
     /// The layers that carry business rules and so must stay free of delivery and persistence
@@ -43,21 +61,44 @@ internal static class ArchitectureModel
     internal static readonly string[] BusinessRuleLayers = [Domain, Application];
 
     /// <summary>
+    /// Layers that must depend on nothing at all — no projects, no packages, base class library only.
+    /// </summary>
+    /// <remarks>
+    /// Domain qualifies because it is the centre of the architecture; Contracts because it is a
+    /// published wire format, and anything it references becomes a versioning obligation for every
+    /// service that consumes it.
+    /// </remarks>
+    internal static readonly string[] DependencyFreeLayers = [Domain, Contracts];
+
+    /// <summary>
     /// References each project must declare.
     /// </summary>
     /// <remarks>
     /// This is the one table that carries real editorial judgement, because it does not follow from
-    /// the layer ordering: both hosts name Application <em>and</em> Infrastructure, skipping a rank,
-    /// because a composition root binds the concrete adapters while also calling the use cases directly.
+    /// the layer ordering. Two rows in particular:
+    /// <list type="bullet">
+    /// <item>
+    /// <c>Api</c> names Application <em>and</em> Infrastructure, skipping a rank, because a
+    /// composition root binds the concrete adapters while also calling the use cases directly.
+    /// </item>
+    /// <item>
+    /// <c>Listener</c> names <em>only</em> Contracts. It is a separate deployable whose job is to
+    /// receive task-change events and log them, so the wire format is the entire legitimate overlap.
+    /// Handing it Application or Infrastructure would give a log-only service the aggregate, the
+    /// repository and the production database, and would make "separate service" a naming
+    /// convention rather than a fact the build enforces.
+    /// </item>
+    /// </list>
     /// </remarks>
     internal static readonly IReadOnlyDictionary<string, string[]> RequiredReferences =
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             { Domain, [] },
-            { Application, [Domain] },
+            { Contracts, [] },
+            { Application, [Domain, Contracts] },
             { Infrastructure, [Application] },
             { Api, [Application, Infrastructure] },
-            { Listener, [Application, Infrastructure] }
+            { Listener, [Contracts] }
         };
 
     /// <summary>

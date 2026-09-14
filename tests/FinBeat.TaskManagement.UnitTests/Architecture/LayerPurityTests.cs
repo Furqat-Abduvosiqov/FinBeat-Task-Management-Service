@@ -41,13 +41,14 @@ public sealed class LayerPurityTests
         "RabbitMQ",
         "Confluent.Kafka",
         "Microsoft.AspNetCore",
-        "Swashbuckle",
+        "Swashbuckle"
     ];
 
-    [Fact]
-    public void Domain_assembly_references_only_the_base_class_library()
+    [Theory]
+    [MemberData(nameof(ArchitectureData.DependencyFreeLayers), MemberType = typeof(ArchitectureData))]
+    public void Dependency_free_layer_references_only_the_base_class_library(string layer)
     {
-        var offenders = ArchitectureModel.LoadAssembly(ArchitectureModel.Domain)
+        var offenders = ArchitectureModel.LoadAssembly(layer)
             .GetReferencedAssemblies()
             .Select(reference => reference.Name ?? string.Empty)
             .Where(name => !IsBaseClassLibrary(name))
@@ -56,8 +57,9 @@ public sealed class LayerPurityTests
             .ToArray();
 
         offenders.Should().BeEmpty(
-            "the Domain layer must compile against the base class library and nothing else - that is "
-            + "what lets the business rules be reasoned about and tested in isolation");
+            "'{0}' must compile against the base class library and nothing else - that is what lets "
+            + "it be reasoned about, tested and versioned in isolation",
+            layer);
     }
 
     [Theory]

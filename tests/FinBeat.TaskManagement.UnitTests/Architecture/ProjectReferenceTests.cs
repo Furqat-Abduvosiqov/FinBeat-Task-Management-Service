@@ -62,20 +62,24 @@ public sealed class ProjectReferenceTests
             allowed.Length == 0 ? "nothing" : string.Join(", ", allowed));
     }
 
-    [Fact]
-    public void Domain_declares_no_project_references()
+    [Theory]
+    [MemberData(nameof(ArchitectureData.DependencyFreeLayers), MemberType = typeof(ArchitectureData))]
+    public void Dependency_free_layer_declares_no_project_references(string layer)
     {
-        SolutionLayout.ProjectReferences(ArchitectureModel.Domain).Should().BeEmpty(
-            "the Domain layer is the centre of the architecture and must depend on nothing - whatever "
-            + "it needs from the outside belongs behind an interface declared in Domain and "
-            + "implemented further out");
+        SolutionLayout.ProjectReferences(layer).Should().BeEmpty(
+            "'{0}' must depend on nothing - whatever it needs from the outside belongs behind an "
+            + "interface it declares itself and something further out implements",
+            layer);
     }
 
-    [Fact]
-    public void Domain_declares_no_package_references()
+    [Theory]
+    [MemberData(nameof(ArchitectureData.DependencyFreeLayers), MemberType = typeof(ArchitectureData))]
+    public void Dependency_free_layer_declares_no_package_references(string layer)
     {
-        SolutionLayout.PackageReferences(ArchitectureModel.Domain).Should().BeEmpty(
-            "the Domain layer must stay on the base class library alone - a NuGet package here would "
-            + "couple the business rules to a third party's release cycle");
+        SolutionLayout.PackageReferences(layer).Should().BeEmpty(
+            "'{0}' must stay on the base class library alone - a NuGet package here would couple it "
+            + "to a third party's release cycle, and for a published wire format that becomes a "
+            + "versioning obligation for every service that consumes it",
+            layer);
     }
 }

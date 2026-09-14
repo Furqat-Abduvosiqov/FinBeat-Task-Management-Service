@@ -12,6 +12,8 @@ public static class ArchitectureData
 
     public static TheoryData<string> BusinessRuleLayers => new(ArchitectureModel.BusinessRuleLayers);
 
+    public static TheoryData<string> DependencyFreeLayers => new(ArchitectureModel.DependencyFreeLayers);
+
     /// <summary>
     /// One case per forbidden (layer, dependency) edge, so a failure names both ends of the edge
     /// rather than reporting "this layer depends on something it shouldn't".
