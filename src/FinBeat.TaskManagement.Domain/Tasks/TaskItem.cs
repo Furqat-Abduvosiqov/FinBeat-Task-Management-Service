@@ -112,8 +112,11 @@ public sealed class TaskItem : AggregateRoot<TaskItemId>
     /// The move from <see cref="Status"/> to <paramref name="newStatus"/> is not allowed by
     /// <see cref="TaskItemStatusRules.CanTransition"/>.
     /// </exception>
+    /// <exception cref="ArgumentNullException"><paramref name="clock"/> is <see langword="null"/>.</exception>
     public void ChangeStatus(TaskItemStatus newStatus, TimeProvider clock)
     {
+        ArgumentNullException.ThrowIfNull(clock);
+
         if (newStatus == Status)
         {
             return;
@@ -141,8 +144,11 @@ public sealed class TaskItem : AggregateRoot<TaskItemId>
     /// and <see cref="TaskItemStatus.Archived"/> is the retention mechanism that replaces soft
     /// delete.
     /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="clock"/> is <see langword="null"/>.</exception>
     public void Delete(TimeProvider clock)
     {
+        ArgumentNullException.ThrowIfNull(clock);
+
         Raise(new TaskItemDeletedDomainEvent(Id, clock.GetUtcNow()));
     }
 }

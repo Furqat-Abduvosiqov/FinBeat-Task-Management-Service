@@ -1,3 +1,4 @@
+using System.Reflection;
 using FinBeat.TaskManagement.Domain.Tasks;
 using Shouldly;
 
@@ -27,17 +28,35 @@ public class TaskItemStatusRulesTests
         TaskItemStatusRules.CanTransition(from, to).ShouldBe(expected);
     }
 
+    // Guards against a fifth TaskItemStatus being added without extending the matrix above.
+    //
+    // Asserting that CanTransition "does not throw" for every enum value would NOT catch that:
+    // CanTransition ends in a blanket `_ => false` discard arm, which is the correct design but
+    // also means the method can never throw for any value, present or future. A new status would
+    // silently return false for every pair and such a test would stay green. Asserting that the
+    // theory data itself covers the full cross product is what actually fails.
     [Fact]
-    public void Every_declared_status_is_handled_by_CanTransition_without_throwing()
+    public void Theory_data_covers_every_ordered_pair_of_declared_statuses()
     {
         var statuses = Enum.GetValues<TaskItemStatus>();
+        var method = typeof(TaskItemStatusRulesTests)
+            .GetMethod(nameof(CanTransition_matches_the_documented_matrix))!;
 
-        foreach (var from in statuses)
-        {
-            foreach (var to in statuses)
-            {
-                Should.NotThrow(() => TaskItemStatusRules.CanTransition(from, to));
-            }
-        }
+        var covered = method
+            .GetCustomAttributes<InlineDataAttribute>()
+            .SelectMany(attribute => attribute.GetData(method))
+            .Select(row => ((TaskItemStatus)row[0]!, (TaskItemStatus)row[1]!))
+            .ToHashSet();
+
+        var expected = statuses
+            .SelectMany(_ => statuses, (from, to) => (from, to))
+            .ToHashSet();
+
+        covered.Count.ShouldBe(
+            statuses.Length * statuses.Length,
+            $"the matrix test must cover all {statuses.Length * statuses.Length} ordered pairs of "
+            + $"the {statuses.Length} declared statuses");
+
+        expected.Except(covered).ShouldBeEmpty("these status pairs are missing from the theory data");
     }
 }

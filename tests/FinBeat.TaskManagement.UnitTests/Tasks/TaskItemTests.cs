@@ -15,16 +15,58 @@ public class TaskItemTests
     [Fact]
     public void Create_sets_title_description_status_and_matching_timestamps()
     {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
+        // AutoAdvanceAmount makes every read of the clock return a different instant. Without it a
+        // FakeTimeProvider pinned at a fixed time returns the same value from every read, so
+        // rewriting Create as two separate GetUtcNow() calls — the exact regression the
+        // "one single clock read" requirement exists to prevent — would leave this test green.
+        var start = DateTimeOffset.UnixEpoch;
+        var clock = new FakeTimeProvider(start) { AutoAdvanceAmount = TimeSpan.FromSeconds(1) };
 
         var task = TaskItem.Create(Title, Description, clock);
 
         task.Title.ShouldBe(Title);
         task.Description.ShouldBe(Description);
         task.Status.ShouldBe(TaskItemStatus.New);
-        task.CreatedAt.ShouldBe(clock.GetUtcNow());
-        task.UpdatedAt.ShouldBe(clock.GetUtcNow());
+        task.CreatedAt.ShouldBe(start);
+        task.UpdatedAt.ShouldBe(start);
         task.CreatedAt.ShouldBe(task.UpdatedAt);
+    }
+
+    [Fact]
+    public void Delete_leaves_status_and_updated_at_untouched()
+    {
+        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
+        var task = TaskItem.Create(Title, Description, clock);
+        task.ChangeStatus(TaskItemStatus.InProgress, clock);
+        var statusBefore = task.Status;
+        var updatedAtBefore = task.UpdatedAt;
+        task.ClearDomainEvents();
+
+        clock.Advance(TimeSpan.FromMinutes(5));
+        task.Delete(clock);
+
+        // Delete records intent only — the row is removed by the repository, so there is nothing on
+        // the aggregate for it to mutate. Pins that against a future edit adding an UpdatedAt bump.
+        task.Status.ShouldBe(statusBefore);
+        task.UpdatedAt.ShouldBe(updatedAtBefore);
+    }
+
+    [Fact]
+    public void ChangeStatus_with_a_null_clock_throws()
+    {
+        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
+        var task = TaskItem.Create(Title, Description, clock);
+
+        Should.Throw<ArgumentNullException>(() => task.ChangeStatus(TaskItemStatus.InProgress, null!));
+    }
+
+    [Fact]
+    public void Delete_with_a_null_clock_throws()
+    {
+        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
+        var task = TaskItem.Create(Title, Description, clock);
+
+        Should.Throw<ArgumentNullException>(() => task.Delete(null!));
     }
 
     [Fact]

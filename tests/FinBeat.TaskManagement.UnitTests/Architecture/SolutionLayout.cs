@@ -87,14 +87,46 @@ internal static class SolutionLayout
             MatchCasing = MatchCasing.CaseInsensitive,
         };
 
-        return RepositoryRoot
+        var groups = RepositoryRoot
             .EnumerateFiles("*.csproj", options)
-            .Where(IsNotBuildOutput)
-            .ToDictionary(file => Path.GetFileNameWithoutExtension(file.Name), file => file, StringComparer.Ordinal);
+            .Where(IsNotExcludedDirectory)
+            .GroupBy(file => Path.GetFileNameWithoutExtension(file.Name), StringComparer.Ordinal)
+            .ToArray();
+
+        // Two files with the same project name means the walk escaped into a copy of the repository
+        // and we can no longer tell which one the rules should read. Fail loudly and name both:
+        // silently taking the first match would read a DIFFERENT checkout's csproj and report a
+        // confident, wrong answer — the one failure mode these tests must never have.
+        var collisions = groups.Where(group => group.Count() > 1).ToArray();
+
+        if (collisions.Length > 0)
+        {
+            var detail = string.Join(
+                Environment.NewLine,
+                collisions.Select(group =>
+                    $"  {group.Key}:{Environment.NewLine}    "
+                    + string.Join($"{Environment.NewLine}    ", group.Select(file => file.FullName))));
+
+            throw new InvalidOperationException(
+                $"Found more than one project file with the same name under '{RepositoryRoot.FullName}', "
+                + $"so the architecture rules cannot tell which to read:{Environment.NewLine}{detail}"
+                + $"{Environment.NewLine}Exclude the duplicate location from {nameof(IsNotExcludedDirectory)}.");
+        }
+
+        return groups.ToDictionary(group => group.Key, group => group.Single(), StringComparer.Ordinal);
     }
 
-    private static bool IsNotBuildOutput(FileInfo file) =>
+    /// <summary>
+    /// Filters out directories that hold build output or a nested copy of the repository.
+    /// </summary>
+    /// <remarks>
+    /// Any dot-prefixed segment is skipped, which covers <c>.git</c>, <c>.vs</c>, <c>.idea</c> and —
+    /// the one that actually bites — <c>.claude/worktrees/</c>, where Claude Code places git
+    /// worktrees. A worktree is a complete second checkout, so without this the walk finds every
+    /// project twice and cannot tell the copies apart.
+    /// </remarks>
+    private static bool IsNotExcludedDirectory(FileInfo file) =>
         !Path.GetRelativePath(RepositoryRoot.FullName, file.DirectoryName!)
             .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-            .Any(segment => segment is "bin" or "obj" or ".git");
+            .Any(segment => segment is "bin" or "obj" || segment.StartsWith('.'));
 }

@@ -45,6 +45,13 @@ public abstract class Entity<TId> : IEquatable<Entity<TId>>
 
     /// <summary>Determines whether <paramref name="other"/> is the same runtime type as this instance and has an equal <see cref="Id"/>.</summary>
     /// <param name="other">The entity to compare against.</param>
+    /// <remarks>
+    /// An entity whose <see cref="Id"/> is still the default value has no identity yet — the state
+    /// EF Core leaves an instance in between calling the parameterless constructor and populating
+    /// it. Two such instances fall back to reference equality rather than comparing equal to each
+    /// other, which would otherwise collapse every unidentified entity into one another and, for
+    /// example, silently drop all but one of them from a <see cref="HashSet{T}"/>.
+    /// </remarks>
     public bool Equals(Entity<TId>? other)
     {
         if (other is null)
@@ -57,7 +64,22 @@ public abstract class Entity<TId> : IEquatable<Entity<TId>>
             return true;
         }
 
-        return GetType() == other.GetType() && Id.Equals(other.Id);
+        if (GetType() != other.GetType())
+        {
+            return false;
+        }
+
+        // EqualityComparer<TId>.Default rather than Id.Equals: TId is constrained to notnull, but
+        // that constraint permits reference types, whose Id is null after the EF Core constructor
+        // runs — Id.Equals would throw there. It also avoids boxing when TId is a struct.
+        var comparer = EqualityComparer<TId>.Default;
+
+        if (comparer.Equals(Id, default!) || comparer.Equals(other.Id, default!))
+        {
+            return false;
+        }
+
+        return comparer.Equals(Id, other.Id);
     }
 
     /// <inheritdoc />
@@ -65,4 +87,12 @@ public abstract class Entity<TId> : IEquatable<Entity<TId>>
 
     /// <inheritdoc />
     public override int GetHashCode() => HashCode.Combine(GetType(), Id);
+
+    /// <summary>Whether this entity has been assigned an identity yet.</summary>
+    /// <remarks>
+    /// False only in the window between EF Core invoking the parameterless constructor and
+    /// populating the instance. Application code never observes it: the aggregate factories assign
+    /// an id at construction.
+    /// </remarks>
+    protected bool HasIdentity => !EqualityComparer<TId>.Default.Equals(Id, default!);
 }

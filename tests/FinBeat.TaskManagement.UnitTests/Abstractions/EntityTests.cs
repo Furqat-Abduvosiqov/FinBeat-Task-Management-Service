@@ -91,11 +91,55 @@ public class EntityTests
         aggregate.DomainEvents.Count.ShouldBe(1);
     }
 
+    [Fact]
+    public void Entities_without_an_assigned_id_are_not_equal_to_each_other()
+    {
+        // The state EF Core leaves an instance in between calling the parameterless constructor and
+        // populating it. Both carry Guid.Empty, so a naive Id.Equals(other.Id) would report them as
+        // the same entity — and a HashSet would then silently keep only one of them.
+        var first = new UnidentifiedTestEntity();
+        var second = new UnidentifiedTestEntity();
+
+        first.Equals(second).ShouldBeFalse();
+        (first == second).ShouldBeFalse();
+        new HashSet<Entity<Guid>> { first, second }.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public void An_entity_without_an_assigned_id_is_still_equal_to_itself()
+    {
+        var entity = new UnidentifiedTestEntity();
+        var sameReference = entity;
+
+        entity.Equals(sameReference).ShouldBeTrue();
+        (entity == sameReference).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void An_entity_with_a_reference_type_id_does_not_throw_before_the_id_is_assigned()
+    {
+        // TId is constrained to notnull, but that permits reference types, whose Id is null after
+        // the parameterless constructor. Id.Equals(other.Id) would throw NullReferenceException.
+        var first = new UnidentifiedStringKeyedEntity();
+        var second = new UnidentifiedStringKeyedEntity();
+
+        Should.NotThrow(() => first.Equals(second)).ShouldBeFalse();
+    }
+
     private sealed class TestEntity(Guid id) : Entity<Guid>(id)
     {
     }
 
     private sealed class OtherTestEntity(Guid id) : Entity<Guid>(id)
+    {
+    }
+
+    /// <summary>Stands in for an entity EF Core has constructed but not yet populated.</summary>
+    private sealed class UnidentifiedTestEntity : Entity<Guid>
+    {
+    }
+
+    private sealed class UnidentifiedStringKeyedEntity : Entity<string>
     {
     }
 
