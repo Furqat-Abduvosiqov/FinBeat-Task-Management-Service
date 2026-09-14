@@ -54,14 +54,4 @@ public sealed class ProjectReferenceTests
             layer);
     }
 
-    [Theory]
-    [MemberData(nameof(ArchitectureData.DependencyFreeLayers), MemberType = typeof(ArchitectureData))]
-    public void Dependency_free_layer_declares_no_package_references(string layer)
-    {
-        SolutionLayout.PackageReferences(layer).Should().BeEmpty(
-            "'{0}' must stay on the base class library alone - a NuGet package here would couple it "
-            + "to a third party's release cycle, and for a published wire format that becomes a "
-            + "versioning obligation for every service that consumes it",
-            layer);
-    }
 }

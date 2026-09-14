@@ -56,7 +56,20 @@ internal static class SolutionLayout
 
     /// <summary>The package ids <paramref name="projectName"/> declares a PackageReference to.</summary>
     internal static IReadOnlyList<string> PackageReferences(string projectName) =>
-        ItemIncludes(projectName, "PackageReference")
+        SortedIncludes(projectName, "PackageReference");
+
+    /// <summary>
+    /// The shared frameworks <paramref name="projectName"/> declares a FrameworkReference to.
+    /// </summary>
+    /// <remarks>
+    /// Checked alongside packages because a FrameworkReference is the other way third-party surface
+    /// arrives without a PackageReference: one line pulls all of ASP.NET Core into a layer.
+    /// </remarks>
+    internal static IReadOnlyList<string> FrameworkReferences(string projectName) =>
+        SortedIncludes(projectName, "FrameworkReference");
+
+    private static string[] SortedIncludes(string projectName, string itemName) =>
+        ItemIncludes(projectName, itemName)
             .Distinct(StringComparer.Ordinal)
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();

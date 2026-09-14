@@ -38,10 +38,6 @@ internal static class ArchitectureModel
     // the compiler emits an entry point into the global namespace.
     internal static readonly string[] LibraryLayers = [Domain, Contracts, Application, Infrastructure];
 
-    // Must stay free of delivery and persistence technology. Named here rather than in a test
-    // attribute so a new inner layer is covered automatically.
-    internal static readonly string[] BusinessRuleLayers = [Domain, Application];
-
     // Must depend on nothing at all - no projects, no packages, base class library only. Domain
     // because it is the centre of the architecture; Contracts because anything a published wire
     // format references becomes a versioning obligation for every service that consumes it.
@@ -80,6 +76,24 @@ internal static class ArchitectureModel
             .Distinct(StringComparer.Ordinal)
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
+
+    // Third-party code each inner layer may pull in, by NuGet package id or shared-framework name.
+    // Empty means none.
+    //
+    // An allow-list, not a deny-list, and that is the whole point: a deny-list passes anything nobody
+    // thought to forbid, so MongoDB.Driver or StackExchange.Redis would land in Application with a
+    // green suite. Nobody adding a package thinks to go edit a list of banned ones. Under an
+    // allow-list, adding a package means editing this table - which is the conversation the rule
+    // exists to force. The keys are also the definition of which layers are constrained at all;
+    // Infrastructure and the hosts are absent because adapters and composition roots are exactly
+    // where technology is supposed to live.
+    internal static readonly IReadOnlyDictionary<string, string[]> AllowedExternalReferences =
+        new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            { Domain, [] },
+            { Contracts, [] },
+            { Application, [] }
+        };
 
     internal static string[] ForbiddenFor(string layer)
     {

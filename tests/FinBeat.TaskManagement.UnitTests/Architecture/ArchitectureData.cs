@@ -10,7 +10,7 @@ public static class ArchitectureData
 
     public static TheoryData<string> LibraryLayers => new(ArchitectureModel.LibraryLayers);
 
-    public static TheoryData<string> BusinessRuleLayers => new(ArchitectureModel.BusinessRuleLayers);
+    public static TheoryData<string> ExternallyConstrainedLayers => new(ArchitectureModel.AllowedExternalReferences.Keys);
 
     public static TheoryData<string> DependencyFreeLayers => new(ArchitectureModel.DependencyFreeLayers);
 
