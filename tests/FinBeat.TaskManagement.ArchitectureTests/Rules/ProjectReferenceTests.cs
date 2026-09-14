@@ -1,5 +1,5 @@
 using FinBeat.TaskManagement.ArchitectureTests.Internals;
-using FluentAssertions;
+using Shouldly;
 
 namespace FinBeat.TaskManagement.ArchitectureTests.Rules;
 
@@ -17,10 +17,9 @@ public sealed class ProjectReferenceTests
             .OrderBy(required => required, StringComparer.Ordinal)
             .ToArray();
 
-        missing.Should().BeEmpty(
-            "'{0}' must declare the project references its layer requires - add them to {1}",
-            layer,
-            SolutionLayout.ProjectFile(layer).Name);
+        missing.ShouldBeEmpty(
+            $"'{layer}' must declare the project references its layer requires - add them to "
+            + SolutionLayout.ProjectFile(layer).Name);
     }
 
     [Theory]
@@ -32,19 +31,18 @@ public sealed class ProjectReferenceTests
             .Where(declared => !allowed.Contains(declared, StringComparer.Ordinal))
             .ToArray();
 
-        violations.Should().BeEmpty(
-            "dependencies point inward only, so this one has to be inverted - put the interface in the "
-            + "inner layer and implement it further out. '{0}' may reference: {1}",
-            layer,
-            allowed.Length == 0 ? "nothing" : string.Join(", ", allowed));
+        violations.ShouldBeEmpty(
+            "dependencies point inward only, so this one has to be inverted - put the interface in "
+            + $"the inner layer and implement it further out. '{layer}' may reference: "
+            + (allowed.Length == 0 ? "nothing" : string.Join(", ", allowed)));
     }
 
     [Theory]
     [MemberData(nameof(ArchitectureData.DependencyFreeLayers), MemberType = typeof(ArchitectureData))]
     public void Dependency_free_layer_declares_no_project_references(string layer)
     {
-        SolutionLayout.ProjectReferences(layer).Should().BeEmpty(
-            "'{0}' depends on nothing - what it needs from outside goes behind an interface it owns",
-            layer);
+        SolutionLayout.ProjectReferences(layer).ShouldBeEmpty(
+            $"'{layer}' depends on nothing - what it needs from outside goes behind an interface it "
+            + "owns");
     }
 }

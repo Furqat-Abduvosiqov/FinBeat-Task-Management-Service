@@ -37,8 +37,13 @@ future code.
   `ProjectReference`. Base class library only. Architecture tests assert this by reading the
   `.csproj` files, so they hold even for an empty layer.
 - The domain never calls `DateTimeOffset.UtcNow`. Time arrives via `TimeProvider` parameters.
-- `IUnitOfWork` belongs in Application, not Domain — a repository is a collection of aggregates, a
-  unit of work is a transaction boundary.
+- **No repository pattern.** `DbContext` is already a unit of work and `DbSet` already a repository,
+  so wrapping them adds indirection and a worse query language than LINQ. Use cases depend on
+  `IApplicationDbContext` in the Application layer; Infrastructure implements it. Do not reintroduce
+  `ITaskItemRepository` or an `IUnitOfWork`.
+- Application may reference **EF Core and nothing else**. That single exception exists so
+  `IApplicationDbContext` can expose `DbSet`; the provider belongs to Infrastructure. The allow-list
+  lives in `ArchitectureModel.AllowedExternalReferences` and a test enforces it.
 - Hard delete, not soft delete. The `Archived` status is the retention mechanism.
 - Domain events are raised inside the aggregate and never cross a process boundary in that shape;
   Application maps them to flat primitives-only integration contracts.

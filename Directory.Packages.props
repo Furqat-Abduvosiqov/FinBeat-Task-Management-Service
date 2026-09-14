@@ -12,6 +12,9 @@
     <!-- Listener -->
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
 
+    <!-- Application: DbSet on IApplicationDbContext. The provider belongs to Infrastructure. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="8.0.31" />
+
     <!-- Test projects -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
@@ -19,14 +22,16 @@
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
 
     <!--
-      Pinned to 7.x deliberately. FluentAssertions 8.0.0 moved to the Xceed commercial licence,
-      which is paid for non-open-source use; 7.2.2 is the last Apache-2.0 release. Do not bump
-      this to 8.x without checking the licence.
+      Shouldly for every test project, unit and architecture alike. FluentAssertions was the
+      obvious alternative and is more widely recognised, but 8.0.0 moved to the Xceed commercial
+      licence, which is paid for non-open-source use; staying on the last Apache-2.0 release
+      (7.2.2) means a dependency frozen since early 2025. Shouldly is MIT and current, so the
+      question never arises. It also reports the failing expression itself rather than only the
+      values, which reads better in a test report.
     -->
-    <PackageVersion Include="FluentAssertions" Version="7.2.2" />
-
-    <!-- Needed by later tasks; versions settled now, not yet referenced by any project -->
     <PackageVersion Include="Shouldly" Version="4.2.1" />
+
+    <!-- FakeTimeProvider. The domain takes time as a parameter, so tests assert exact instants. -->
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="8.10.0" />
     <!--
       The eNhancedEdition fork, not NetArchTest.Rules. The original's last release is 1.3.2 from
