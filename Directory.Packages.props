@@ -12,6 +12,9 @@
     <!-- Listener -->
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
 
+    <!-- Application: DbSet on IApplicationDbContext. The provider belongs to Infrastructure. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="8.0.31" />
+
     <!-- Test projects -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />

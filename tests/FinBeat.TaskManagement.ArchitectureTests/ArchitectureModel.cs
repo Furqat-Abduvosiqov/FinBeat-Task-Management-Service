@@ -64,12 +64,18 @@ internal static class ArchitectureModel
     // An allow-list, because a deny-list misses whatever nobody thought to ban, and nobody adding a
     // package goes looking for a list of banned ones. The keys also say which layers are constrained
     // at all - Infrastructure and the hosts are absent, since that is where technology belongs.
+    //
+    // Application gets EF Core alone, and deliberately: IApplicationDbContext exposes DbSet, which
+    // is the shape a use case wants. There is no repository - DbContext is already a unit of work
+    // and DbSet already a repository, so a second wrapper buys indirection and a worse query
+    // language. Only the abstraction lives here; the provider is Infrastructure's, which is what
+    // the entry below keeps honest. Anything beyond EF Core in Application is a mistake.
     internal static readonly IReadOnlyDictionary<string, string[]> AllowedExternalReferences =
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             { Domain, [] },
             { Contracts, [] },
-            { Application, [] }
+            { Application, ["Microsoft.EntityFrameworkCore"] }
         };
 
     internal static string[] ForbiddenFor(string layer)

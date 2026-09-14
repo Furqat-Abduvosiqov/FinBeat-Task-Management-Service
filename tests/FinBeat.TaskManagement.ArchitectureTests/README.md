@@ -20,7 +20,7 @@ Listener ───────────────────────�
 
 | Project | May reference | Why |
 |---|---|---|
-| `Domain` | nothing | The centre. Entities, value objects, domain events, repository contracts. |
+| `Domain` | nothing | The centre. Entities, value objects, domain events. |
 | `Contracts` | nothing | The published wire format: flat integration-event records. |
 | `Application` | `Domain`, `Contracts` | Use cases. Owns the domain-event → integration-event mapping. |
 | `Infrastructure` | `Application` | Adapters: persistence, messaging. Implements contracts the inner layers declare. |

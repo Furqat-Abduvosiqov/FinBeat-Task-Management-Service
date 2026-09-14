@@ -1,4 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+        EF Core, for DbSet on IApplicationDbContext. This is the one third-party package the
+        architecture rules permit in this layer: see ArchitectureModel.AllowedExternalReferences.
+    -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\FinBeat.TaskManagement.Domain\FinBeat.TaskManagement.Domain.csproj" />
