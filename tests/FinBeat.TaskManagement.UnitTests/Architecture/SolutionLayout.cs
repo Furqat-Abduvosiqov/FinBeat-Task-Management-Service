@@ -20,7 +20,7 @@ internal static class SolutionLayout
     private static readonly string[] ProjectAreas = ["src", "tests"];
 
     /// <summary>The directory holding the solution file.</summary>
-    internal static DirectoryInfo RepositoryRoot => LazyRoot.Value;
+    private static DirectoryInfo RepositoryRoot => LazyRoot.Value;
 
     /// <summary>The project file for <paramref name="projectName"/>.</summary>
     internal static FileInfo ProjectFile(string projectName)
