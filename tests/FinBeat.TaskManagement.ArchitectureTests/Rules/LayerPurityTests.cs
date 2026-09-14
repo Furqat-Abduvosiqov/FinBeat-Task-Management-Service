@@ -3,14 +3,10 @@ using FluentAssertions;
 
 namespace FinBeat.TaskManagement.ArchitectureTests.Rules;
 
-// Keeps third-party technology out of the inner layers. Layer ordering alone does not do this: an
-// ORM or a message broker arrives as a package or a framework reference, not a project reference,
-// so it slips past the layering rules entirely. Keeping it out is what makes the business rules
-// testable without a database and re-hostable behind a different transport.
+// Keeps technology out of the inner layers. The layering rules cannot do this on their own: an ORM
+// or a broker arrives as a package, not a project reference.
 public sealed class LayerPurityTests
 {
-    // Where the runtime actually loaded the shared framework from. Membership of that directory is
-    // what "part of the base class library" means - see IsBaseClassLibrary.
     private static readonly string SharedFrameworkDirectory =
         Path.GetDirectoryName(typeof(object).Assembly.Location) ?? string.Empty;
 
@@ -28,11 +24,8 @@ public sealed class LayerPurityTests
             .ToArray();
 
         offenders.Should().BeEmpty(
-            "'{0}' may pull in only approved third-party code. This is an allow-list on purpose: a "
-            + "deny-list passes whatever nobody thought to forbid, and nobody adding a package goes "
-            + "looking for a list of banned ones. Approved here: {1}. To add one, add it to "
-            + "ArchitectureModel.AllowedExternalReferences - that edit is the conversation this rule "
-            + "exists to force",
+            "'{0}' may use only approved third-party code. Approved here: {1}. If this one belongs, "
+            + "add it to ArchitectureModel.AllowedExternalReferences",
             layer,
             approved.Length == 0 ? "nothing" : string.Join(", ", approved));
     }
@@ -55,11 +48,8 @@ public sealed class LayerPurityTests
             layer);
     }
 
-    // Membership is tested by asking where the runtime actually loaded from, not by matching a
-    // "System." name prefix. The prefix is a poor proxy: System.Data.SqlClient, System.Reactive and
-    // System.IdentityModel.Tokens.Jwt are all ordinary NuGet packages that would pass it. Asking the
-    // directory also covers the netstandard and mscorlib facades without naming them, since both are
-    // files sitting in it.
+    // Asks where the runtime actually loaded from rather than matching a "System." prefix, which is a
+    // poor proxy - System.Data.SqlClient and System.Reactive are ordinary NuGet packages.
     private static bool IsBaseClassLibrary(string assemblyName) =>
         File.Exists(Path.Combine(SharedFrameworkDirectory, assemblyName + ".dll"));
 }

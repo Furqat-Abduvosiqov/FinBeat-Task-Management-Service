@@ -3,14 +3,8 @@ using FluentAssertions;
 
 namespace FinBeat.TaskManagement.ArchitectureTests.Rules;
 
-/// <summary>
-/// Rules over what the compiled assemblies actually depend on, type by type.
-/// </summary>
-/// <remarks>
-/// <see cref="ProjectReferenceTests"/> pins the graph the build <em>declares</em>; these pin the graph
-/// the IL really contains. The two catch different mistakes: a project reference can be declared and
-/// never used, and a dependency can arrive transitively without ever being declared. Both must hold.
-/// </remarks>
+// The graph as compiled. ProjectReferenceTests catches what is declared and unused; this catches the
+// reverse - a dependency that arrives transitively and was never declared anywhere.
 public sealed class LayerDependencyTests
 {
     [Theory]

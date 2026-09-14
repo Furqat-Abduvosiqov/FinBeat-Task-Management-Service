@@ -1,9 +1,6 @@
 namespace FinBeat.TaskManagement.ArchitectureTests.Internals;
 
-/// <summary>
-/// Theory data shared by the architecture rules, projected from <see cref="ArchitectureModel"/>
-/// so the test cases and the layering they check can never drift apart.
-/// </summary>
+// Projects the model into what [MemberData] wants, so cases and layering cannot drift apart.
 public static class ArchitectureData
 {
     public static TheoryData<string> AllLayers => new(ArchitectureModel.AllLayers);
@@ -14,15 +11,12 @@ public static class ArchitectureData
 
     public static TheoryData<string> DependencyFreeLayers => new(ArchitectureModel.DependencyFreeLayers);
 
-    /// <summary>
-    /// One case per forbidden (layer, dependency) edge, so a failure names both ends of the edge
-    /// rather than reporting "this layer depends on something it shouldn't".
-    /// </summary>
+    // One case per forbidden edge, so a failure names both ends rather than just the guilty layer.
     public static TheoryData<string, string> ForbiddenEdges
     {
         get
         {
-            // TheoryData<T1, T2> has no collection initializer taking a sequence, so this stays a loop.
+            // TheoryData<T1, T2> takes no sequence, so this stays a loop.
             var data = new TheoryData<string, string>();
 
             foreach (var layer in ArchitectureModel.AllLayers)

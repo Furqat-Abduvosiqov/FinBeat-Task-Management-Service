@@ -9,10 +9,8 @@
     </ItemGroup>
 
     <!--
-        Contracts and nothing else. This service consumes task-change events and logs them; it is a
-        separate deployable, so the only thing it may share with the API is the wire format. Giving
-        it Application or Infrastructure would hand a log-only service the aggregate, the repository
-        and the production database, and make it the same monolith deployed twice.
+        Contracts and nothing else. This is a separate deployable, so the wire format is all it may
+        share with the API - give it Application and it becomes the same monolith deployed twice.
     -->
     <ItemGroup>
         <ProjectReference Include="..\FinBeat.TaskManagement.Contracts\FinBeat.TaskManagement.Contracts.csproj" />

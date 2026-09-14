@@ -3,14 +3,8 @@ using FluentAssertions;
 
 namespace FinBeat.TaskManagement.ArchitectureTests.Rules;
 
-/// <summary>
-/// Rules over the dependency graph the .csproj files declare.
-/// </summary>
-/// <remarks>
-/// These read the project files rather than the compiled assemblies, and so they hold even while a
-/// layer is still empty: a forbidden ProjectReference fails here the moment somebody adds it in the
-/// IDE, long before any code exists to make the compiler record it.
-/// </remarks>
+// The graph as declared. These still work on an empty layer: a bad reference fails here the moment
+// someone adds it in the IDE, long before any code exists for the compiler to notice.
 public sealed class ProjectReferenceTests
 {
     [Theory]
@@ -39,8 +33,8 @@ public sealed class ProjectReferenceTests
             .ToArray();
 
         violations.Should().BeEmpty(
-            "dependencies point inward only, so a reference out of '{0}' has to be inverted - declare "
-            + "an interface in the inner layer and implement it in the outer one. '{0}' may reference: {1}",
+            "dependencies point inward only, so this one has to be inverted - put the interface in the "
+            + "inner layer and implement it further out. '{0}' may reference: {1}",
             layer,
             allowed.Length == 0 ? "nothing" : string.Join(", ", allowed));
     }
@@ -50,9 +44,7 @@ public sealed class ProjectReferenceTests
     public void Dependency_free_layer_declares_no_project_references(string layer)
     {
         SolutionLayout.ProjectReferences(layer).Should().BeEmpty(
-            "'{0}' must depend on nothing - whatever it needs from the outside belongs behind an "
-            + "interface it declares itself and something further out implements",
+            "'{0}' depends on nothing - what it needs from outside goes behind an interface it owns",
             layer);
     }
-
 }
