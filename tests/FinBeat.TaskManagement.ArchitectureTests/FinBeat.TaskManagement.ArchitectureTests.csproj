@@ -9,7 +9,7 @@
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="FluentAssertions" />
+        <PackageReference Include="Shouldly" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="NetArchTest.eNhancedEdition" />
         <PackageReference Include="xunit" />

@@ -1,5 +1,5 @@
 using FinBeat.TaskManagement.ArchitectureTests.Internals;
-using FluentAssertions;
+using Shouldly;
 
 namespace FinBeat.TaskManagement.ArchitectureTests.Rules;
 
@@ -23,11 +23,10 @@ public sealed class LayerPurityTests
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        offenders.Should().BeEmpty(
-            "'{0}' may use only approved third-party code. Approved here: {1}. If this one belongs, "
-            + "add it to ArchitectureModel.AllowedExternalReferences",
-            layer,
-            approved.Length == 0 ? "nothing" : string.Join(", ", approved));
+        offenders.ShouldBeEmpty(
+            $"'{layer}' may use only approved third-party code. Approved here: "
+            + (approved.Length == 0 ? "nothing" : string.Join(", ", approved))
+            + ". If this one belongs, add it to ArchitectureModel.AllowedExternalReferences");
     }
 
     [Theory]
@@ -42,10 +41,9 @@ public sealed class LayerPurityTests
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        offenders.Should().BeEmpty(
-            "'{0}' must compile against the base class library and nothing else - that is what lets "
-            + "it be reasoned about, tested and versioned in isolation",
-            layer);
+        offenders.ShouldBeEmpty(
+            $"'{layer}' must compile against the base class library and nothing else - that is what "
+            + "lets it be reasoned about, tested and versioned in isolation");
     }
 
     // Asks where the runtime actually loaded from rather than matching a "System." prefix, which is a

@@ -15,7 +15,6 @@
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <!-- Shouldly here, FluentAssertions in ArchitectureTests: each suite keeps one. -->
         <PackageReference Include="Shouldly" />
         <!-- FakeTimeProvider. The domain takes time as a parameter, so tests assert exact instants. -->
         <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />

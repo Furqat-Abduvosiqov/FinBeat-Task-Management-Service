@@ -1,5 +1,5 @@
 using System.Reflection;
-using FluentAssertions;
+using Shouldly;
 
 namespace FinBeat.TaskManagement.ArchitectureTests.Rules;
 
@@ -22,10 +22,9 @@ public sealed class DomainModelTests
     {
         var entities = Domain.GetTypes().Where(IsEntity).ToArray();
 
-        entities.Should().NotBeEmpty(
-            "this rule is vacuous if it finds no entities - check that '{0}' still names the base "
-            + "type, because a rename would make this test pass by finding nothing",
-            EntityBaseType);
+        entities.ShouldNotBeEmpty(
+            $"this rule is vacuous if it finds no entities - check that '{EntityBaseType}' still "
+            + "names the base type, because a rename would make this test pass by finding nothing");
 
         var offenders = entities
             .SelectMany(entity => entity
@@ -35,7 +34,7 @@ public sealed class DomainModelTests
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        offenders.Should().BeEmpty(
+        offenders.ShouldBeEmpty(
             "an entity's state may only change through a method that also raises the corresponding "
             + "domain event. Make the setter private and add a method that expresses the intent");
     }
@@ -47,9 +46,9 @@ public sealed class DomainModelTests
     {
         var events = DomainEventTypes();
 
-        events.Should().NotBeEmpty(
-            "this rule is vacuous if it finds no events - check that '{0}' still names the "
-            + "interface", DomainEventInterface);
+        events.ShouldNotBeEmpty(
+            $"this rule is vacuous if it finds no events - check that '{DomainEventInterface}' "
+            + "still names the interface");
 
         var offenders = events
             .Where(type => !type.IsSealed)
@@ -57,7 +56,7 @@ public sealed class DomainModelTests
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        offenders.Should().BeEmpty("domain events are messages and must not be inherited from");
+        offenders.ShouldBeEmpty("domain events are messages and must not be inherited from");
     }
 
     // Catches the reverse mistake from the rule above: a type named like an event that never
@@ -71,7 +70,7 @@ public sealed class DomainModelTests
             .Where(type => type.Name.EndsWith("DomainEvent", StringComparison.Ordinal))
             .ToArray();
 
-        named.Should().NotBeEmpty("this rule is vacuous if it finds no types named '*DomainEvent'");
+        named.ShouldNotBeEmpty("this rule is vacuous if it finds no types named '*DomainEvent'");
 
         var offenders = named
             .Where(type => !ImplementsDomainEvent(type))
@@ -79,9 +78,9 @@ public sealed class DomainModelTests
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        offenders.Should().BeEmpty(
-            "a type named as a domain event that does not implement {0} is never dispatched",
-            DomainEventInterface);
+        offenders.ShouldBeEmpty(
+            $"a type named as a domain event that does not implement {DomainEventInterface} is "
+            + "never dispatched");
     }
 
     // Value types included deliberately: filtering to classes would silently skip an event declared

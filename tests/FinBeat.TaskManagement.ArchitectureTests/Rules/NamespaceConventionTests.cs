@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using FinBeat.TaskManagement.ArchitectureTests.Internals;
-using FluentAssertions;
+using Shouldly;
 
 namespace FinBeat.TaskManagement.ArchitectureTests.Rules;
 
@@ -23,10 +23,9 @@ public sealed class NamespaceConventionTests
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        offenders.Should().BeEmpty(
-            "every type in '{0}' belongs under the '{0}' namespace - the other rules read namespaces "
-            + "to tell layers apart, so a type filed elsewhere is invisible to them",
-            layer);
+        offenders.ShouldBeEmpty(
+            $"every type in '{layer}' belongs under the '{layer}' namespace - the other rules read "
+            + "namespaces to tell layers apart, so a type filed elsewhere is invisible to them");
     }
 
     // Not NetArchTest's ResideInNamespaceStartingWith: that is a raw prefix match, so a type in
