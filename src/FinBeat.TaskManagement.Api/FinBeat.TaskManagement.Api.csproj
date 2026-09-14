@@ -5,4 +5,9 @@
         <PackageReference Include="Swashbuckle.AspNetCore"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\FinBeat.TaskManagement.Application\FinBeat.TaskManagement.Application.csproj" />
+        <ProjectReference Include="..\FinBeat.TaskManagement.Infrastructure\FinBeat.TaskManagement.Infrastructure.csproj" />
+    </ItemGroup>
+
 </Project>

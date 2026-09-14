@@ -7,4 +7,12 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.Hosting"/>
     </ItemGroup>
+
+    <!--
+        Contracts and nothing else. This is a separate deployable, so the wire format is all it may
+        share with the API - give it Application and it becomes the same monolith deployed twice.
+    -->
+    <ItemGroup>
+        <ProjectReference Include="..\FinBeat.TaskManagement.Contracts\FinBeat.TaskManagement.Contracts.csproj" />
+    </ItemGroup>
 </Project>

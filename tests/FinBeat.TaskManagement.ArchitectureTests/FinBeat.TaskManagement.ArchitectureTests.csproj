@@ -9,20 +9,27 @@
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+        <PackageReference Include="FluentAssertions" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="NetArchTest.eNhancedEdition" />
         <PackageReference Include="xunit" />
         <PackageReference Include="xunit.runner.visualstudio">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <!-- Shouldly here, FluentAssertions in ArchitectureTests: each suite keeps one. -->
-        <PackageReference Include="Shouldly" />
-        <!-- FakeTimeProvider. The domain takes time as a parameter, so tests assert exact instants. -->
-        <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     </ItemGroup>
 
+    <!--
+        Every layer, each named explicitly - the rules load all of them to read their IL. Leaving one
+        to arrive transitively would break the day the layer it came through stopped referencing it.
+    -->
     <ItemGroup>
         <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Domain\FinBeat.TaskManagement.Domain.csproj" />
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Contracts\FinBeat.TaskManagement.Contracts.csproj" />
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Application\FinBeat.TaskManagement.Application.csproj" />
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Infrastructure\FinBeat.TaskManagement.Infrastructure.csproj" />
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Api\FinBeat.TaskManagement.Api.csproj" />
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Listener\FinBeat.TaskManagement.Listener.csproj" />
     </ItemGroup>
 
     <ItemGroup>
