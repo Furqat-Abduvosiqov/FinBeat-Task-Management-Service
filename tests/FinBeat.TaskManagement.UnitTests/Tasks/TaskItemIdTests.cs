@@ -1,4 +1,5 @@
 using FinBeat.TaskManagement.Domain.Tasks;
+using FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
 using Shouldly;
 
 namespace FinBeat.TaskManagement.UnitTests.Tasks;

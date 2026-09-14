@@ -1,4 +1,4 @@
-namespace FinBeat.TaskManagement.Domain.Tasks;
+namespace FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
 
 /// <summary>Identifies a task.</summary>
 /// <param name="Value">The underlying value.</param>

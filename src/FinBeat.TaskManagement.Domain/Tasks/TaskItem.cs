@@ -1,6 +1,7 @@
 using FinBeat.TaskManagement.Domain.Abstractions;
 using FinBeat.TaskManagement.Domain.Tasks.Events;
 using FinBeat.TaskManagement.Domain.Tasks.Exceptions;
+using FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
 
 namespace FinBeat.TaskManagement.Domain.Tasks;
 

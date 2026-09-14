@@ -1,6 +1,6 @@
 using FinBeat.TaskManagement.Domain.Tasks.Exceptions;
 
-namespace FinBeat.TaskManagement.Domain.Tasks;
+namespace FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
 
 /// <summary>A task's optional description, at most <see cref="MaxLength"/> characters.</summary>
 /// <remarks>
