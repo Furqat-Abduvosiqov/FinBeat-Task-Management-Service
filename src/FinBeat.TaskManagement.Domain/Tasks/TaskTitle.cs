@@ -28,12 +28,9 @@ public sealed record TaskTitle
             throw new InvalidTaskTitleException("A task title cannot be empty or whitespace-only.");
         }
 
-        if (trimmed.Length > MaxLength)
-        {
-            throw new InvalidTaskTitleException($"A task title cannot exceed {MaxLength} characters.");
-        }
-
-        return new TaskTitle(trimmed);
+        return trimmed.Length > MaxLength 
+            ? throw new InvalidTaskTitleException($"A task title cannot exceed {MaxLength} characters.") 
+            : new TaskTitle(trimmed);
     }
 
     /// <inheritdoc />
