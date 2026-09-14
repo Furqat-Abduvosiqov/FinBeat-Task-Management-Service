@@ -10,6 +10,35 @@ namespace FinBeat.TaskManagement.UnitTests.Architecture;
 /// </remarks>
 public sealed class ProjectReferenceTests
 {
+    [Fact]
+    public void Every_layer_resolves_to_a_distinct_project_file_inside_the_solution()
+    {
+        // Regression guard: project discovery once globbed the directory tree, which breaks the
+        // moment a second checkout of the repository sits inside it - a git worktree created under
+        // the repository root does exactly that, and every project name then collides. Resolving
+        // through the solution file makes that impossible; this keeps it impossible.
+        var resolved = ArchitectureModel.AllLayers
+            .Select(layer => new { Layer = layer, File = SolutionLayout.ProjectFile(layer) })
+            .ToArray();
+
+        var problems = resolved
+            .Where(entry => !entry.File.Exists)
+            .Select(entry => $"{entry.Layer} -> {entry.File.FullName} (does not exist)")
+            .Concat(resolved
+                .GroupBy(entry => entry.File.FullName, StringComparer.OrdinalIgnoreCase)
+                .Where(group => group.Count() > 1)
+                .Select(group => $"{string.Join(" and ", group.Select(entry => entry.Layer))} -> {group.Key} (same file)"))
+            .OrderBy(problem => problem, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.True(
+            problems.Length == 0,
+            ArchitectureModel.Describe(
+                $"Each layer must resolve to its own project file listed in {SolutionLayout.SolutionFile.Name}. "
+                + "Offending resolutions:",
+                problems));
+    }
+
     [Theory]
     [MemberData(nameof(ArchitectureData.AllLayers), MemberType = typeof(ArchitectureData))]
     public void Layer_declares_every_reference_the_architecture_requires(string layer)
