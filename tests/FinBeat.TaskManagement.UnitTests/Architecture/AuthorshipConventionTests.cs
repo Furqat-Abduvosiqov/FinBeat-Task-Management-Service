@@ -82,7 +82,7 @@ public sealed partial class AuthorshipConventionTests
         // trap SolutionLayout avoids by reading the solution file.
         foreach (var rootFile in RootBuildFiles)
         {
-            var file = new FileInfo(Path.Combine(SolutionLayout.SolutionFile.DirectoryName!, rootFile));
+            var file = new FileInfo(Path.Combine(SolutionLayout.RepositoryRoot.FullName, rootFile));
 
             if (file.Exists)
             {
