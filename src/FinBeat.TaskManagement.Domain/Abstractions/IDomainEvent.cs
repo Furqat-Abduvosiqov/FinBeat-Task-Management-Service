@@ -1,17 +1,20 @@
 namespace FinBeat.TaskManagement.Domain.Abstractions;
 
-/// <summary>
-/// Marks a type as a domain event: a statement that something has already happened inside the
-/// domain, raised by an <see cref="AggregateRoot{TId}"/> as a side effect of its own behaviour.
-/// </summary>
+/// <summary>Something that has already happened in the domain, raised by the aggregate it happened to.</summary>
 /// <remarks>
-/// Deliberately carries no identifier of its own. An idempotency key for at-least-once redelivery
-/// is a transport concern that belongs to the outbox/message-broker machinery in the
-/// Infrastructure layer — the domain model has no notion of "redelivery" and should not be made to
-/// carry a field that only makes sense once an event leaves the process.
+/// <para>
+/// Domain events never leave the process in this shape. Application maps each one to a flat
+/// integration contract of primitives, and only that gets serialized. Value objects here have
+/// private constructors, so <c>System.Text.Json</c> can write them but not read them back — a
+/// failure that would otherwise surface only when a publisher tries to rehydrate an outbox row.
+/// </para>
+/// <para>
+/// No event id either: an idempotency key only means something once an event leaves the process,
+/// so it belongs to the outbox in Infrastructure.
+/// </para>
 /// </remarks>
 public interface IDomainEvent
 {
-    /// <summary>The instant, in UTC, at which the event occurred.</summary>
+    /// <summary>When the event occurred, in UTC.</summary>
     DateTimeOffset OccurredOnUtc { get; }
 }

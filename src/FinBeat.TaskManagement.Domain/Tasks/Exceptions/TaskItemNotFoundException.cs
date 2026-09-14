@@ -2,11 +2,10 @@ using FinBeat.TaskManagement.Domain.Abstractions;
 
 namespace FinBeat.TaskManagement.Domain.Tasks.Exceptions;
 
-/// <summary>Raised when a task lookup by id finds no matching task.</summary>
+/// <summary>No task exists with the given id.</summary>
 public sealed class TaskItemNotFoundException : DomainException
 {
-    /// <summary>Initializes a new instance for a task id that could not be found.</summary>
-    /// <param name="taskId">The id that was looked up.</param>
+    /// <summary>Creates the exception for an id that was not found.</summary>
     public TaskItemNotFoundException(TaskItemId taskId)
         : base($"No task was found with id '{taskId}'.")
     {

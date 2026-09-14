@@ -28,13 +28,9 @@ public class TaskItemStatusRulesTests
         TaskItemStatusRules.CanTransition(from, to).ShouldBe(expected);
     }
 
-    // Guards against a fifth TaskItemStatus being added without extending the matrix above.
-    //
-    // Asserting that CanTransition "does not throw" for every enum value would NOT catch that:
-    // CanTransition ends in a blanket `_ => false` discard arm, which is the correct design but
-    // also means the method can never throw for any value, present or future. A new status would
-    // silently return false for every pair and such a test would stay green. Asserting that the
-    // theory data itself covers the full cross product is what actually fails.
+    // Catches a fifth status being added without extending the matrix. Checking that CanTransition
+    // "does not throw" would not: its `_ => false` arm means it never can, so such a test is green
+    // by construction. Checking the theory data's own coverage is what actually fails.
     [Fact]
     public void Theory_data_covers_every_ordered_pair_of_declared_statuses()
     {

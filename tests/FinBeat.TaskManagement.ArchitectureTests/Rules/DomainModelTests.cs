@@ -3,9 +3,8 @@ using Shouldly;
 
 namespace FinBeat.TaskManagement.ArchitectureTests.Rules;
 
-// Rules about the shape of the domain model itself, rather than the layering around it. The other
-// rules here ask which layer may reference which; these ask whether the model still enforces its own
-// invariants, which is a property no dependency graph can see.
+// The shape of the model itself, not the layering around it. Whether an aggregate still enforces
+// its own invariants is not something a dependency graph can see.
 public sealed class DomainModelTests
 {
     private const string EntityBaseType = "FinBeat.TaskManagement.Domain.Abstractions.Entity`1";
@@ -14,9 +13,8 @@ public sealed class DomainModelTests
 
     private static readonly Assembly Domain = ArchitectureModel.LoadAssembly(ArchitectureModel.Domain);
 
-    // Every state change on an aggregate has to go through a method, because the method is what
-    // raises the domain event. One public setter and a caller can change state without an event
-    // existing, which silently breaks the listener the specification requires - and nothing fails.
+    // State changes go through methods because the method is what raises the event. One public
+    // setter and state can change with no event, which breaks the listener and fails nothing.
     [Fact]
     public void Entities_expose_no_public_setters()
     {
@@ -83,9 +81,8 @@ public sealed class DomainModelTests
             + "never dispatched");
     }
 
-    // Value types included deliberately: filtering to classes would silently skip an event declared
-    // as a `readonly record struct`, and the non-empty guards above would still pass on the strength
-    // of the existing ones.
+    // Value types included: filtering to classes would skip an event declared as a record struct,
+    // and the guards above would still pass on the strength of the existing ones.
     private static Type[] DomainEventTypes() =>
         Domain.GetTypes()
             .Where(type => type is { IsPublic: true, IsAbstract: false })

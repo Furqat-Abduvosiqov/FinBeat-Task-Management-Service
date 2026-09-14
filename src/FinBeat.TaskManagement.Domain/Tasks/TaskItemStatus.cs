@@ -1,29 +1,21 @@
 namespace FinBeat.TaskManagement.Domain.Tasks;
 
-/// <summary>
-/// The lifecycle state of a <c>TaskItem</c>.
-/// </summary>
+/// <summary>Where a task is in its lifecycle.</summary>
 /// <remarks>
-/// The technical specification names three statuses: new, in progress, and completed (<c>новая</c>,
-/// <c>в работе</c>, <c>выполненная</c>). <see cref="Archived"/> is a deliberate fourth: this project
-/// uses hard delete rather than soft delete, and <see cref="Archived"/> is the retention mechanism
-/// that replaces it — a user who wants to keep a task's history archives it instead of deleting it,
-/// and only an explicit deletion ever removes the row.
+/// The specification names three statuses. <see cref="Archived"/> is a fourth, added because this
+/// project deletes for real: archiving is how you keep a task's history instead.
 /// </remarks>
 public enum TaskItemStatus
 {
-    /// <summary>The task has been created and no work has started on it yet.</summary>
+    /// <summary>Created, not started.</summary>
     New = 1,
 
-    /// <summary>Work on the task is underway.</summary>
+    /// <summary>Being worked on.</summary>
     InProgress = 2,
 
-    /// <summary>The task's work is finished.</summary>
+    /// <summary>Finished.</summary>
     Completed = 3,
 
-    /// <summary>
-    /// The task is retained for its history rather than deleted. See the remarks on
-    /// <see cref="TaskItemStatus"/> for why this status exists.
-    /// </summary>
+    /// <summary>Kept for its history rather than deleted.</summary>
     Archived = 4,
 }
