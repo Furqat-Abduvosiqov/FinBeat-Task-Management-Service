@@ -1,3 +1,4 @@
+using FinBeat.TaskManagement.Domain.Abstractions;
 using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Domain.Tasks.Events;
 using FinBeat.TaskManagement.Domain.Tasks.Exceptions;
@@ -33,48 +34,9 @@ public class TaskItemTests
     }
 
     [Fact]
-    public void Delete_leaves_status_and_updated_at_untouched()
-    {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var task = TaskItem.Create(Title, Description, clock);
-        task.ChangeStatus(TaskItemStatus.InProgress, clock);
-        var statusBefore = task.Status;
-        var updatedAtBefore = task.UpdatedAt;
-        task.ClearDomainEvents();
-
-        clock.Advance(TimeSpan.FromMinutes(5));
-        task.Delete(clock);
-
-        // Delete records intent only — the row is removed by the repository, so there is nothing on
-        // the aggregate for it to mutate. Pins that against a future edit adding an UpdatedAt bump.
-        task.Status.ShouldBe(statusBefore);
-        task.UpdatedAt.ShouldBe(updatedAtBefore);
-    }
-
-    [Fact]
-    public void ChangeStatus_with_a_null_clock_throws()
-    {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var task = TaskItem.Create(Title, Description, clock);
-
-        Should.Throw<ArgumentNullException>(() => task.ChangeStatus(TaskItemStatus.InProgress, null!));
-    }
-
-    [Fact]
-    public void Delete_with_a_null_clock_throws()
-    {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var task = TaskItem.Create(Title, Description, clock);
-
-        Should.Throw<ArgumentNullException>(() => task.Delete(null!));
-    }
-
-    [Fact]
     public void Create_assigns_a_non_empty_id()
     {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-
-        var task = TaskItem.Create(Title, Description, clock);
+        var (task, _) = NewTask();
 
         task.Id.Value.ShouldNotBe(Guid.Empty);
     }
@@ -82,11 +44,9 @@ public class TaskItemTests
     [Fact]
     public void Create_raises_exactly_one_created_event_with_matching_payload()
     {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
+        var (task, clock) = NewTask();
 
-        var task = TaskItem.Create(Title, Description, clock);
-
-        var domainEvent = task.DomainEvents.ShouldHaveSingleItem().ShouldBeOfType<TaskItemCreatedDomainEvent>();
+        var domainEvent = SingleEvent<TaskItemCreatedDomainEvent>(task);
         domainEvent.TaskId.ShouldBe(task.Id);
         domainEvent.Title.ShouldBe(task.Title);
         domainEvent.Description.ShouldBe(task.Description);
@@ -107,8 +67,7 @@ public class TaskItemTests
     [Fact]
     public void UpdateDetails_with_changed_values_assigns_them_bumps_UpdatedAt_and_leaves_CreatedAt_untouched()
     {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var task = TaskItem.Create(Title, Description, clock);
+        var (task, clock) = NewTask();
         task.ClearDomainEvents();
         var createdAt = task.CreatedAt;
 
@@ -123,7 +82,7 @@ public class TaskItemTests
         task.UpdatedAt.ShouldBe(clock.GetUtcNow());
         task.CreatedAt.ShouldBe(createdAt);
 
-        var domainEvent = task.DomainEvents.ShouldHaveSingleItem().ShouldBeOfType<TaskItemDetailsUpdatedDomainEvent>();
+        var domainEvent = SingleEvent<TaskItemDetailsUpdatedDomainEvent>(task);
         domainEvent.TaskId.ShouldBe(task.Id);
         domainEvent.Title.ShouldBe(newTitle);
         domainEvent.Description.ShouldBe(newDescription);
@@ -133,8 +92,7 @@ public class TaskItemTests
     [Fact]
     public void UpdateDetails_with_values_equal_to_current_raises_no_event_and_does_not_bump_UpdatedAt()
     {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var task = TaskItem.Create(Title, Description, clock);
+        var (task, clock) = NewTask();
         task.ClearDomainEvents();
         var updatedAt = task.UpdatedAt;
 
@@ -148,8 +106,7 @@ public class TaskItemTests
     [Fact]
     public void UpdateDetails_throws_when_any_argument_is_null()
     {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var task = TaskItem.Create(Title, Description, clock);
+        var (task, clock) = NewTask();
 
         Should.Throw<ArgumentNullException>(() => task.UpdateDetails(null!, Description, clock));
         Should.Throw<ArgumentNullException>(() => task.UpdateDetails(Title, null!, clock));
@@ -159,8 +116,7 @@ public class TaskItemTests
     [Fact]
     public void ChangeStatus_to_a_legal_target_assigns_it_bumps_UpdatedAt_and_raises_event_with_both_statuses()
     {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var task = TaskItem.Create(Title, Description, clock);
+        var (task, clock) = NewTask();
         task.ClearDomainEvents();
 
         clock.Advance(TimeSpan.FromMinutes(30));
@@ -169,7 +125,7 @@ public class TaskItemTests
         task.Status.ShouldBe(TaskItemStatus.InProgress);
         task.UpdatedAt.ShouldBe(clock.GetUtcNow());
 
-        var domainEvent = task.DomainEvents.ShouldHaveSingleItem().ShouldBeOfType<TaskItemStatusChangedDomainEvent>();
+        var domainEvent = SingleEvent<TaskItemStatusChangedDomainEvent>(task);
         domainEvent.TaskId.ShouldBe(task.Id);
         domainEvent.PreviousStatus.ShouldBe(TaskItemStatus.New);
         domainEvent.CurrentStatus.ShouldBe(TaskItemStatus.InProgress);
@@ -179,8 +135,7 @@ public class TaskItemTests
     [Fact]
     public void ChangeStatus_to_the_current_status_raises_no_event_and_does_not_bump_UpdatedAt()
     {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var task = TaskItem.Create(Title, Description, clock);
+        var (task, clock) = NewTask();
         task.ClearDomainEvents();
         var updatedAt = task.UpdatedAt;
 
@@ -195,8 +150,7 @@ public class TaskItemTests
     [Fact]
     public void ChangeStatus_along_a_rejected_edge_throws_and_leaves_status_and_UpdatedAt_untouched()
     {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var task = TaskItem.Create(Title, Description, clock);
+        var (task, clock) = NewTask();
         task.ChangeStatus(TaskItemStatus.Completed, clock);
         task.ClearDomainEvents();
         var updatedAt = task.UpdatedAt;
@@ -213,10 +167,17 @@ public class TaskItemTests
     }
 
     [Fact]
+    public void ChangeStatus_with_a_null_clock_throws()
+    {
+        var (task, _) = NewTask();
+
+        Should.Throw<ArgumentNullException>(() => task.ChangeStatus(TaskItemStatus.InProgress, null!));
+    }
+
+    [Fact]
     public void Archive_then_restore_round_trips_new_to_archived_to_new()
     {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var task = TaskItem.Create(Title, Description, clock);
+        var (task, clock) = NewTask();
 
         task.ChangeStatus(TaskItemStatus.Archived, clock);
         task.Status.ShouldBe(TaskItemStatus.Archived);
@@ -228,14 +189,13 @@ public class TaskItemTests
     [Fact]
     public void Delete_raises_exactly_one_deleted_event()
     {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var task = TaskItem.Create(Title, Description, clock);
+        var (task, clock) = NewTask();
         task.ClearDomainEvents();
 
         clock.Advance(TimeSpan.FromMinutes(1));
         task.Delete(clock);
 
-        var domainEvent = task.DomainEvents.ShouldHaveSingleItem().ShouldBeOfType<TaskItemDeletedDomainEvent>();
+        var domainEvent = SingleEvent<TaskItemDeletedDomainEvent>(task);
         domainEvent.TaskId.ShouldBe(task.Id);
         domainEvent.OccurredOnUtc.ShouldBe(clock.GetUtcNow());
     }
@@ -243,29 +203,66 @@ public class TaskItemTests
     [Fact]
     public void Delete_works_on_an_archived_task()
     {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var task = TaskItem.Create(Title, Description, clock);
+        var (task, clock) = NewTask();
         task.ChangeStatus(TaskItemStatus.Archived, clock);
         task.ClearDomainEvents();
 
         Should.NotThrow(() => task.Delete(clock));
 
-        task.DomainEvents.ShouldHaveSingleItem().ShouldBeOfType<TaskItemDeletedDomainEvent>();
+        SingleEvent<TaskItemDeletedDomainEvent>(task);
+    }
+
+    [Fact]
+    public void Delete_leaves_status_and_updated_at_untouched()
+    {
+        var (task, clock) = NewTask();
+        task.ChangeStatus(TaskItemStatus.InProgress, clock);
+        var statusBefore = task.Status;
+        var updatedAtBefore = task.UpdatedAt;
+        task.ClearDomainEvents();
+
+        clock.Advance(TimeSpan.FromMinutes(5));
+        task.Delete(clock);
+
+        // Delete records intent only — the row is removed by whoever commits, so there is nothing on
+        // the aggregate for it to mutate. Pins that against a future edit adding an UpdatedAt bump.
+        task.Status.ShouldBe(statusBefore);
+        task.UpdatedAt.ShouldBe(updatedAtBefore);
+    }
+
+    [Fact]
+    public void Delete_with_a_null_clock_throws()
+    {
+        var (task, _) = NewTask();
+
+        Should.Throw<ArgumentNullException>(() => task.Delete(null!));
     }
 
     [Fact]
     public void ClearDomainEvents_between_operations_lets_each_operations_events_be_asserted_in_isolation()
     {
-        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
-        var task = TaskItem.Create(Title, Description, clock);
+        var (task, clock) = NewTask();
         task.DomainEvents.Count.ShouldBe(1);
 
         task.ClearDomainEvents();
         task.ChangeStatus(TaskItemStatus.InProgress, clock);
-        task.DomainEvents.ShouldHaveSingleItem().ShouldBeOfType<TaskItemStatusChangedDomainEvent>();
+        SingleEvent<TaskItemStatusChangedDomainEvent>(task);
 
         task.ClearDomainEvents();
         task.Delete(clock);
-        task.DomainEvents.ShouldHaveSingleItem().ShouldBeOfType<TaskItemDeletedDomainEvent>();
+        SingleEvent<TaskItemDeletedDomainEvent>(task);
     }
+
+    // Every test starts from the epoch on a clock it can advance. Keeping that here means changing
+    // the convention is one edit rather than sixteen.
+    private static (TaskItem Task, FakeTimeProvider Clock) NewTask()
+    {
+        var clock = new FakeTimeProvider(DateTimeOffset.UnixEpoch);
+
+        return (TaskItem.Create(Title, Description, clock), clock);
+    }
+
+    private static TEvent SingleEvent<TEvent>(TaskItem task)
+        where TEvent : IDomainEvent =>
+        task.DomainEvents.ShouldHaveSingleItem().ShouldBeOfType<TEvent>();
 }

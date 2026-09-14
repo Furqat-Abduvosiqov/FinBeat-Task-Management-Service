@@ -20,6 +20,12 @@ public abstract class Entity<TId> : IEquatable<Entity<TId>>
     /// <summary>The entity's identifier. Set once, never changed.</summary>
     public TId Id { get; protected init; } = default!;
 
+    /// <summary>
+    /// Whether an id has been assigned yet. False only between EF Core constructing an entity and
+    /// populating it — the one window in which an entity has no identity to be compared by.
+    /// </summary>
+    protected bool HasIdentity => !EqualityComparer<TId>.Default.Equals(Id, default!);
+
     /// <summary>Compares two entities by runtime type and id.</summary>
     public static bool operator ==(Entity<TId>? left, Entity<TId>? right) =>
         left is null ? right is null : left.Equals(right);
@@ -29,9 +35,8 @@ public abstract class Entity<TId> : IEquatable<Entity<TId>>
 
     /// <summary>Compares by runtime type and id.</summary>
     /// <remarks>
-    /// An entity with a default id has no identity yet — where EF Core leaves one between
-    /// constructing and populating it. Those fall back to reference equality, so two unsaved
-    /// entities are not mistaken for the same one.
+    /// Entities without an id yet fall back to reference equality, so two unsaved ones are not
+    /// mistaken for the same entity.
     /// </remarks>
     public bool Equals(Entity<TId>? other)
     {
@@ -52,11 +57,9 @@ public abstract class Entity<TId> : IEquatable<Entity<TId>>
 
         // EqualityComparer rather than Id.Equals: TId is notnull, but that still allows reference
         // types, whose Id is null after the EF constructor. It also avoids boxing for structs.
-        var comparer = EqualityComparer<TId>.Default;
-
-        return !comparer.Equals(Id, default!)
-            && !comparer.Equals(other.Id, default!)
-            && comparer.Equals(Id, other.Id);
+        return HasIdentity
+            && other.HasIdentity
+            && EqualityComparer<TId>.Default.Equals(Id, other.Id);
     }
 
     /// <inheritdoc />
@@ -64,7 +67,4 @@ public abstract class Entity<TId> : IEquatable<Entity<TId>>
 
     /// <inheritdoc />
     public override int GetHashCode() => HashCode.Combine(GetType(), Id);
-
-    /// <summary>Whether an id has been assigned yet. False only while EF Core is materializing.</summary>
-    protected bool HasIdentity => !EqualityComparer<TId>.Default.Equals(Id, default!);
 }
