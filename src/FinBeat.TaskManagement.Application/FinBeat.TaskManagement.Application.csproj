@@ -1,3 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+    <ItemGroup>
+        <ProjectReference Include="..\FinBeat.TaskManagement.Domain\FinBeat.TaskManagement.Domain.csproj" />
+    </ItemGroup>
+
 </Project>

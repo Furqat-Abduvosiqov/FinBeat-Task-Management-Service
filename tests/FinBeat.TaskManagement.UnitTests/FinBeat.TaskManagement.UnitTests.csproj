@@ -2,6 +2,12 @@
 
     <PropertyGroup>
         <IsTestProject>true</IsTestProject>
+        <!--
+            CA1707 (no underscores in member names) is a public-API rule. Test names are sentences
+            read by a human out of a failure report, not an API surface, so underscores are the
+            point. Move this to tests/Directory.Build.props if the other test projects want it too.
+        -->
+        <NoWarn>$(NoWarn);CA1707</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
@@ -10,11 +16,25 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="NetArchTest.Rules" />
         <PackageReference Include="xunit" />
         <PackageReference Include="xunit.runner.visualstudio">
           <PrivateAssets>all</PrivateAssets>
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+    </ItemGroup>
+
+    <!--
+        The architecture tests assert the layering of the whole solution, so this project
+        references every layer. The references are deliberately NOT a statement about what unit
+        tests may use - they exist so the rules can load each assembly and read each .csproj.
+    -->
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Domain\FinBeat.TaskManagement.Domain.csproj" />
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Application\FinBeat.TaskManagement.Application.csproj" />
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Infrastructure\FinBeat.TaskManagement.Infrastructure.csproj" />
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Api\FinBeat.TaskManagement.Api.csproj" />
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Listener\FinBeat.TaskManagement.Listener.csproj" />
     </ItemGroup>
 
     <ItemGroup>
