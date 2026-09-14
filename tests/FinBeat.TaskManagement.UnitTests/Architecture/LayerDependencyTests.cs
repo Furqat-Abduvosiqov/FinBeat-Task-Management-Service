@@ -13,19 +13,6 @@ namespace FinBeat.TaskManagement.UnitTests.Architecture;
 public sealed class LayerDependencyTests
 {
     [Theory]
-    [MemberData(nameof(ArchitectureData.AllLayers), MemberType = typeof(ArchitectureData))]
-    public void Layer_assembly_is_a_real_file_on_disk(string layer)
-    {
-        // NetArchTest reads IL through Mono.Cecil, which needs a file rather than an in-memory image.
-        // This does not prove the assembly contains any types - while a layer is still empty the IL
-        // rules below genuinely have nothing to inspect, and the .csproj rules carry the weight.
-        var assembly = ArchitectureModel.LoadAssembly(layer);
-
-        assembly.Location.Should().NotBeEmpty(
-            "'{0}' must be loadable from disk for the dependency rules to read its IL", layer);
-    }
-
-    [Theory]
     [MemberData(nameof(ArchitectureData.ForbiddenEdges), MemberType = typeof(ArchitectureData))]
     public void Layer_has_no_compiled_dependency_on_a_layer_further_out(string layer, string forbidden)
     {

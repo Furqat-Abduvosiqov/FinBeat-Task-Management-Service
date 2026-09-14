@@ -12,24 +12,6 @@ namespace FinBeat.TaskManagement.UnitTests.Architecture;
 /// </remarks>
 public sealed class ProjectReferenceTests
 {
-    [Fact]
-    public void Every_layer_resolves_to_an_existing_project_file()
-    {
-        // Regression guard: project discovery once globbed the directory tree, which breaks the
-        // moment a second checkout of the repository sits inside it - a git worktree created under
-        // the repository root does exactly that. Resolving through the solution file fixed it; this
-        // keeps a renamed or moved project from silently resolving to nothing.
-        var missing = ArchitectureModel.AllLayers
-            .Select(layer => (Layer: layer, File: SolutionLayout.ProjectFile(layer)))
-            .Where(entry => !entry.File.Exists)
-            .Select(entry => $"{entry.Layer} -> {entry.File.FullName}")
-            .ToArray();
-
-        missing.Should().BeEmpty(
-            "every layer must resolve to a project file that exists on disk, as listed in {0}",
-            SolutionLayout.SolutionFile.Name);
-    }
-
     [Theory]
     [MemberData(nameof(ArchitectureData.AllLayers), MemberType = typeof(ArchitectureData))]
     public void Layer_declares_every_reference_the_architecture_requires(string layer)

@@ -1,8 +1,8 @@
 namespace FinBeat.TaskManagement.UnitTests.Architecture;
 
 /// <summary>
-/// Theory data shared by the architecture rules, projected from <see cref="ArchitectureModel"/> so
-/// the test cases and the layering they check can never drift apart.
+/// Theory data shared by the architecture rules, projected from <see cref="ArchitectureModel"/>
+/// so the test cases and the layering they check can never drift apart.
 /// </summary>
 public static class ArchitectureData
 {
