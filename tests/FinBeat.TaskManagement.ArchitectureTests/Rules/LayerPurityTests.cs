@@ -1,6 +1,7 @@
+using FinBeat.TaskManagement.ArchitectureTests.Internals;
 using FluentAssertions;
 
-namespace FinBeat.TaskManagement.ArchitectureTests;
+namespace FinBeat.TaskManagement.ArchitectureTests.Rules;
 
 // Keeps third-party technology out of the inner layers. Layer ordering alone does not do this: an
 // ORM or a message broker arrives as a package or a framework reference, not a project reference,

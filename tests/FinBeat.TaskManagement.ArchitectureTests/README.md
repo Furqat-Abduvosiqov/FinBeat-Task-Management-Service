@@ -59,17 +59,22 @@ The first matters most right now. A reference added in the IDE but unused leaves
 compiled output** — the compiler omits it — so while the layers are still thin, reading the `.csproj`
 is the only angle that sees anything at all.
 
-## Files
+## Layout
 
-| File | Lines | Role |
-|---|---|---|
-| `ArchitectureModel.cs` | 130 | The architecture, written down once. Layer names and the reference tables. |
-| `SolutionLayout.cs` | 102 | Resolves project files by convention and reads what they declare. |
-| `ArchitectureData.cs` | 39 | Plumbing: xUnit's `[MemberData]` needs `TheoryData`, not `string[]`. |
-| `ProjectReferenceTests.cs` | 57 | Rules over the declared dependency graph. |
-| `LayerPurityTests.cs` | 64 | Keeps third-party technology out of the inner layers. |
-| `NamespaceConventionTests.cs` | 43 | Keeps namespaces aligned with assemblies. |
-| `LayerDependencyTests.cs` | 25 | Rules over compiled IL. |
+```
+ArchitectureModel.cs        the architecture, written down once — the file you edit
+Rules/                      the four classes that assert
+  ProjectReferenceTests.cs      rules over the declared dependency graph
+  LayerDependencyTests.cs       rules over compiled IL
+  LayerPurityTests.cs           keeps third-party technology out of the inner layers
+  NamespaceConventionTests.cs   keeps namespaces aligned with assemblies
+Internals/                  plumbing the rules are written on top of
+  SolutionLayout.cs             resolves project files and reads what they declare
+  ArchitectureData.cs           xUnit's [MemberData] needs TheoryData, not string[]
+```
+
+`ArchitectureModel.cs` sits at the root deliberately: it is the one file you edit to change the
+architecture, so it should be the first thing you see.
 
 Two implementation notes worth knowing:
 

@@ -1,6 +1,7 @@
+using FinBeat.TaskManagement.ArchitectureTests.Internals;
 using FluentAssertions;
 
-namespace FinBeat.TaskManagement.ArchitectureTests;
+namespace FinBeat.TaskManagement.ArchitectureTests.Rules;
 
 /// <summary>
 /// Rules over the dependency graph the .csproj files declare.
