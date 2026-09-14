@@ -12,7 +12,7 @@ namespace FinBeat.TaskManagement.Domain.Tasks;
 /// For whoever writes the Infrastructure layer: the <c>SaveChangesAsync</c> interceptor that drains
 /// <see cref="AggregateRoot{TId}.DomainEvents"/> must read the change tracker's entries
 /// <em>before</em> the save completes. A hard-deleted <see cref="TaskItem"/> is detached from the
-/// change tracker once <c>SaveChangesAsync</c> returns, so collecting events afterwards would let
+/// change tracker once <c>SaveChangesAsync</c> returns, so collecting events afterward would let
 /// its <see cref="TaskItemDeletedDomainEvent"/> silently vanish — breaking the requirement that a
 /// listener service receives deletion events.
 /// </remarks>
@@ -62,7 +62,7 @@ public sealed class TaskItem : AggregateRoot<TaskItemId>
 
         // A single call to the clock, so CreatedAt and UpdatedAt are identical, not merely close.
         var now = clock.GetUtcNow();
-        var task = new TaskItem(TaskItemId.New(clock), title, description, now);
+        var task = new TaskItem(TaskItemId.New(), title, description, now);
 
         task.Raise(new TaskItemCreatedDomainEvent(task.Id, task.Title, task.Description, task.Status, now));
 
