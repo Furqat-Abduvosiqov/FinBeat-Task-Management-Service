@@ -6,6 +6,16 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!--
+      The 0-warning rule, enforced rather than merely asserted in prose. Without this a missing XML
+      <summary> is CS1591 at warning severity and nothing stops it reaching dev.
+
+      NuGet audit advisories stay warnings on purpose: a CVE newly disclosed against an already
+      pinned package would otherwise turn a green build red with no code change, which is news to
+      act on rather than a reason to block the build.
+    -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
   </PropertyGroup>
 
 </Project>

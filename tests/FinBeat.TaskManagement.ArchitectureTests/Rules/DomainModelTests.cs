@@ -7,7 +7,7 @@ namespace FinBeat.TaskManagement.ArchitectureTests.Rules;
 // its own invariants is not something a dependency graph can see.
 public sealed class DomainModelTests
 {
-    private const string EntityBaseType = "FinBeat.TaskManagement.Domain.Abstractions.Entity`1";
+    private const string AggregateRootBaseType = "FinBeat.TaskManagement.Domain.Abstractions.AggregateRoot`1";
 
     private const string DomainEventInterface = "FinBeat.TaskManagement.Domain.Abstractions.IDomainEvent";
 
@@ -16,24 +16,24 @@ public sealed class DomainModelTests
     // State changes go through methods because the method is what raises the event. One public
     // setter and state can change with no event, which breaks the listener and fails nothing.
     [Fact]
-    public void Entities_expose_no_public_setters()
+    public void Aggregate_roots_expose_no_public_setters()
     {
-        var entities = Domain.GetTypes().Where(IsEntity).ToArray();
+        var aggregateRoots = Domain.GetTypes().Where(IsAggregateRoot).ToArray();
 
-        entities.ShouldNotBeEmpty(
-            $"this rule is vacuous if it finds no entities - check that '{EntityBaseType}' still "
+        aggregateRoots.ShouldNotBeEmpty(
+            $"this rule is vacuous if it finds no aggregate roots - check that '{AggregateRootBaseType}' still "
             + "names the base type, because a rename would make this test pass by finding nothing");
 
-        var offenders = entities
-            .SelectMany(entity => entity
+        var offenders = aggregateRoots
+            .SelectMany(aggregateRoot => aggregateRoot
                 .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(property => property.SetMethod is { IsPublic: true })
-                .Select(property => $"{entity.Name}.{property.Name}"))
+                .Select(property => $"{aggregateRoot.Name}.{property.Name}"))
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
         offenders.ShouldBeEmpty(
-            "an entity's state may only change through a method that also raises the corresponding "
+            "an aggregate's state may only change through a method that also raises the corresponding "
             + "domain event. Make the setter private and add a method that expresses the intent");
     }
 
@@ -99,7 +99,7 @@ public sealed class DomainModelTests
             type.GetInterfaces(),
             contract => string.Equals(contract.FullName, DomainEventInterface, StringComparison.Ordinal));
 
-    private static bool IsEntity(Type type)
+    private static bool IsAggregateRoot(Type type)
     {
         if (type.IsAbstract || !type.IsClass)
         {
@@ -111,7 +111,7 @@ public sealed class DomainModelTests
             if (current.IsGenericType
                 && string.Equals(
                     current.GetGenericTypeDefinition().FullName,
-                    EntityBaseType,
+                    AggregateRootBaseType,
                     StringComparison.Ordinal))
             {
                 return true;

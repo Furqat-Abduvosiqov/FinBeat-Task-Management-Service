@@ -1,4 +1,5 @@
 using FinBeat.TaskManagement.Domain.Tasks;
+using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -15,9 +16,6 @@ internal sealed class StatusParameterFilter : IOperationFilter
     /// <inheritdoc />
     public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
-        ArgumentNullException.ThrowIfNull(operation);
-        ArgumentNullException.ThrowIfNull(context);
-
         foreach (var described in context.ApiDescription.ParameterDescriptions.Where(IsStatus))
         {
             var parameter = operation.Parameters?
@@ -25,10 +23,18 @@ internal sealed class StatusParameterFilter : IOperationFilter
 
             if (parameter is not null)
             {
-                parameter.Schema = OpenApiConventions.StatusSchema();
+                parameter.Schema = StatusSchema();
             }
         }
     }
+
+    // Stated rather than inferred: Swashbuckle reads schemas with its own serializer and would
+    // otherwise render an integer where the wire carries a name.
+    private static OpenApiSchema StatusSchema() => new()
+    {
+        Type = "string",
+        Enum = Enum.GetNames<TaskItemStatus>().Select(name => (IOpenApiAny)new OpenApiString(name)).ToList(),
+    };
 
     private static bool IsStatus(Microsoft.AspNetCore.Mvc.ApiExplorer.ApiParameterDescription described) =>
         described.Type == typeof(TaskItemStatus)

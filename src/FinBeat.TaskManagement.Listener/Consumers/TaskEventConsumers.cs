@@ -10,8 +10,6 @@ internal sealed class TaskCreatedConsumer(ILogger<TaskCreatedConsumer> logger) :
     /// <inheritdoc />
     public Task Consume(ConsumeContext<TaskCreated> context)
     {
-        ArgumentNullException.ThrowIfNull(context);
-
         logger.LogInformation(
             "Task {TaskId} was created at {OccurredOnUtc:O} as {Status}: {Title}",
             context.Message.TaskId,
@@ -31,8 +29,6 @@ internal sealed class TaskDetailsUpdatedConsumer(ILogger<TaskDetailsUpdatedConsu
     /// <inheritdoc />
     public Task Consume(ConsumeContext<TaskDetailsUpdated> context)
     {
-        ArgumentNullException.ThrowIfNull(context);
-
         logger.LogInformation(
             "Task {TaskId} was retitled at {OccurredOnUtc:O}: {Title}",
             context.Message.TaskId,
@@ -51,8 +47,6 @@ internal sealed class TaskStatusChangedConsumer(ILogger<TaskStatusChangedConsume
     /// <inheritdoc />
     public Task Consume(ConsumeContext<TaskStatusChanged> context)
     {
-        ArgumentNullException.ThrowIfNull(context);
-
         logger.LogInformation(
             "Task {TaskId} moved from {PreviousStatus} to {CurrentStatus} at {OccurredOnUtc:O}",
             context.Message.TaskId,
@@ -71,8 +65,6 @@ internal sealed class TaskDeletedConsumer(ILogger<TaskDeletedConsumer> logger) :
     /// <inheritdoc />
     public Task Consume(ConsumeContext<TaskDeleted> context)
     {
-        ArgumentNullException.ThrowIfNull(context);
-
         logger.LogInformation(
             "Task {TaskId} was deleted at {OccurredOnUtc:O}",
             context.Message.TaskId,

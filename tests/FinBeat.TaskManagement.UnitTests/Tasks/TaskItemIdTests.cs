@@ -3,24 +3,8 @@ using Shouldly;
 
 namespace FinBeat.TaskManagement.UnitTests.Tasks;
 
-public class TaskItemIdTests
+public sealed class TaskItemIdTests
 {
-    [Fact]
-    public void From_with_empty_guid_throws()
-    {
-        Should.Throw<ArgumentException>(() => TaskItemId.From(Guid.Empty));
-    }
-
-    [Fact]
-    public void From_with_a_non_empty_guid_wraps_it()
-    {
-        var value = Guid.NewGuid();
-
-        var id = TaskItemId.From(value);
-
-        id.Value.ShouldBe(value);
-    }
-
     [Fact]
     public void New_assigns_a_non_empty_value()
     {
@@ -42,6 +26,6 @@ public class TaskItemIdTests
     {
         var value = Guid.NewGuid();
 
-        TaskItemId.From(value).ShouldBe(TaskItemId.From(value));
+        new TaskItemId(value).ShouldBe(new TaskItemId(value));
     }
 }

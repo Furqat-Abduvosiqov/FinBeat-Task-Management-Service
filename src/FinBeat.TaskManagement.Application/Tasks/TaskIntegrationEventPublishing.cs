@@ -6,7 +6,7 @@ using FinBeat.TaskManagement.Domain.Tasks.Events;
 
 namespace FinBeat.TaskManagement.Application.Tasks;
 
-internal static class TaskIntegrationEvents
+internal static class TaskIntegrationEventPublishing
 {
     /// <summary>Publishes everything the aggregate has raised, then clears it.</summary>
     /// <remarks>

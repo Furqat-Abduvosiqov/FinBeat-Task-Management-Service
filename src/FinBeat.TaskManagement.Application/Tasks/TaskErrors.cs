@@ -17,7 +17,7 @@ public static class TaskErrors
     /// <param name="maxPageSize">The largest page size on offer.</param>
     public static Error InvalidPaging(int maxPageSize) =>
         new(
-            "tasks.paging.invalid",
+            "task.paging.invalid",
             $"Page must be 1 or greater and page size between 1 and {maxPageSize}.",
             ErrorType.Validation);
 
@@ -47,7 +47,6 @@ public static class TaskErrors
 
     private static ErrorType Classify(DomainException exception) => exception switch
     {
-        TaskItemNotFoundException => ErrorType.NotFound,
         InvalidTaskStatusTransitionException => ErrorType.Conflict,
         _ => ErrorType.Validation,
     };

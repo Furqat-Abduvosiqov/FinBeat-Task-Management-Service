@@ -4,7 +4,7 @@ using Shouldly;
 
 namespace FinBeat.TaskManagement.UnitTests.Tasks;
 
-public class TaskItemStatusRulesTests
+public sealed class TaskItemStatusRulesTests
 {
     [Theory]
     [InlineData(TaskItemStatus.New, TaskItemStatus.New, false)]

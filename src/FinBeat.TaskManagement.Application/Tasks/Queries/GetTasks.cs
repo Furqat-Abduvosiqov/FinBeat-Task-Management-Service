@@ -7,11 +7,11 @@ namespace FinBeat.TaskManagement.Application.Tasks.Queries;
 
 /// <summary>Asks for a page of tasks, oldest first.</summary>
 /// <param name="Status">Return only tasks in this status, or null for all of them.</param>
-/// <param name="Page">Which page to return, counting from one.</param>
+/// <param name="PageNumber">Which page to return, counting from one.</param>
 /// <param name="PageSize">How many tasks to return, at most <see cref="GetTasksHandler.MaxPageSize"/>.</param>
 public sealed record GetTasksQuery(
     TaskItemStatus? Status = null,
-    int Page = 1,
+    int PageNumber = 1,
     int PageSize = GetTasksHandler.DefaultPageSize);
 
 /// <summary>Reads a page of tasks.</summary>
@@ -41,7 +41,7 @@ public sealed class GetTasksHandler(IApplicationDbContext context)
             return Result.Failure<Page<TaskResponse>>(TaskErrors.UnknownStatus(requested));
         }
 
-        if (query.Page < 1 || query.PageSize < 1 || query.PageSize > MaxPageSize)
+        if (query.PageNumber < 1 || query.PageSize < 1 || query.PageSize > MaxPageSize)
         {
             return Result.Failure<Page<TaskResponse>>(TaskErrors.InvalidPaging(MaxPageSize));
         }
@@ -63,13 +63,13 @@ public sealed class GetTasksHandler(IApplicationDbContext context)
             // it, and a test that cannot fail would only advertise a guarantee it does not provide.
             .OrderBy(task => task.CreatedAt)
             .ThenBy(task => task.Id)
-            .Skip((query.Page - 1) * query.PageSize)
+            .Skip((query.PageNumber - 1) * query.PageSize)
             .Take(query.PageSize)
             .ToListAsync(cancellationToken);
 
         return Result.Success(new Page<TaskResponse>(
             matches.ConvertAll(TaskResponse.From),
-            query.Page,
+            query.PageNumber,
             query.PageSize,
             totalItems));
     }

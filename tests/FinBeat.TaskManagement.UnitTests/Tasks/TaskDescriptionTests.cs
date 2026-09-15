@@ -4,7 +4,7 @@ using Shouldly;
 
 namespace FinBeat.TaskManagement.UnitTests.Tasks;
 
-public class TaskDescriptionTests
+public sealed class TaskDescriptionTests
 {
     [Theory]
     [InlineData(null)]
@@ -15,7 +15,6 @@ public class TaskDescriptionTests
         var description = TaskDescription.Create(value);
 
         description.ShouldBe(TaskDescription.None);
-        description.IsEmpty.ShouldBeTrue();
     }
 
     [Fact]

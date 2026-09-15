@@ -153,8 +153,8 @@ public sealed class TaskUseCaseTests(PostgresFixture fixture)
         await using var context = fixture.CreateContext();
         var handler = new GetTasksHandler(context);
 
-        var first = await handler.HandleAsync(new GetTasksQuery(Page: 1, PageSize: 2));
-        var second = await handler.HandleAsync(new GetTasksQuery(Page: 2, PageSize: 2));
+        var first = await handler.HandleAsync(new GetTasksQuery(PageNumber: 1, PageSize: 2));
+        var second = await handler.HandleAsync(new GetTasksQuery(PageNumber: 2, PageSize: 2));
 
         first.Value.Items.Count.ShouldBe(2);
         first.Value.Items.Select(task => task.Id).ShouldBe(seeded.Take(2));
@@ -174,10 +174,10 @@ public sealed class TaskUseCaseTests(PostgresFixture fixture)
     {
         await using var context = fixture.CreateContext();
 
-        var result = await new GetTasksHandler(context).HandleAsync(new GetTasksQuery(Page: page, PageSize: pageSize));
+        var result = await new GetTasksHandler(context).HandleAsync(new GetTasksQuery(PageNumber: page, PageSize: pageSize));
 
         result.IsFailure.ShouldBeTrue();
-        result.Error!.Code.ShouldBe("tasks.paging.invalid");
+        result.Error!.Code.ShouldBe("task.paging.invalid");
         result.Error.Type.ShouldBe(ErrorType.Validation);
     }
 

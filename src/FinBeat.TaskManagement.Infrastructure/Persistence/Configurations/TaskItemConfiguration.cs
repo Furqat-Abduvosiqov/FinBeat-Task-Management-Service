@@ -35,10 +35,6 @@ internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
             .HasMaxLength(TaskDescription.MaxLength)
             .IsRequired();
 
-        builder.Property(task => task.Status).IsRequired();
-        builder.Property(task => task.CreatedAt).IsRequired();
-        builder.Property(task => task.UpdatedAt).IsRequired();
-
         var declaredStatuses = string.Join(", ", Enum.GetValues<TaskItemStatus>().Select(status => (int)status));
 
         builder.ToTable(table =>

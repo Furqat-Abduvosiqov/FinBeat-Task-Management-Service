@@ -1,11 +1,11 @@
 using FinBeat.TaskManagement.Api.Endpoints.Validation;
-using FinBeat.TaskManagement.Api.OpenApi;
 using FinBeat.TaskManagement.Application.Results;
 using FinBeat.TaskManagement.Application.Tasks;
 using FinBeat.TaskManagement.Application.Tasks.Commands;
 using FinBeat.TaskManagement.Application.Tasks.Queries;
 using FinBeat.TaskManagement.Domain.Tasks;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.OpenApi.Models;
 
 namespace FinBeat.TaskManagement.Api.Endpoints;
 
@@ -21,14 +21,12 @@ internal static class TaskEndpoints
     /// </remarks>
     internal static IEndpointRouteBuilder MapTaskEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        ArgumentNullException.ThrowIfNull(endpoints);
-
         var tasks = endpoints.MapGroup("/tasks")
             .WithTags("Tasks")
             .WithOpenApi(operation =>
             {
                 // Group-wide, so the four routes that take an id describe it once between them.
-                OpenApiConventions.Describe(operation, "id", "The task id.");
+                Describe(operation, "id", "The task id.");
 
                 return operation;
             });
@@ -50,9 +48,9 @@ internal static class TaskEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .WithOpenApi(operation =>
             {
-                OpenApiConventions.Describe(operation, "status", "Return only tasks in this status. Omit for all of them.");
-                OpenApiConventions.Describe(operation, "page", "Which page to return, counting from one.");
-                OpenApiConventions.Describe(
+                Describe(operation, "status", "Return only tasks in this status. Omit for all of them.");
+                Describe(operation, "page", "Which page to return, counting from one.");
+                Describe(
                     operation,
                     "pageSize",
                     $"How many tasks to return, from 1 to {GetTasksHandler.MaxPageSize}.");
@@ -105,7 +103,7 @@ internal static class TaskEndpoints
 
         return result.IsSuccess
             ? TypedResults.CreatedAtRoute(result.Value, GetTaskByIdRoute, new { id = result.Value.Id })
-            : result.Error!.ToProblem();
+            : result.Error.ToProblem();
     }
 
     private static async Task<Results<Ok<Page<TaskResponse>>, ProblemHttpResult>> ListAsync(
@@ -117,7 +115,7 @@ internal static class TaskEndpoints
     {
         var result = await handler.HandleAsync(new GetTasksQuery(status, page, pageSize), cancellationToken);
 
-        return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error!.ToProblem();
+        return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem();
     }
 
     private static async Task<Results<Ok<TaskResponse>, ProblemHttpResult>> GetAsync(
@@ -127,7 +125,7 @@ internal static class TaskEndpoints
     {
         var result = await handler.HandleAsync(new GetTaskByIdQuery(id), cancellationToken);
 
-        return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error!.ToProblem();
+        return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem();
     }
 
     private static async Task<Results<Ok<TaskResponse>, ProblemHttpResult>> UpdateAsync(
@@ -140,7 +138,7 @@ internal static class TaskEndpoints
             new UpdateTaskDetailsCommand(id, request.Title, request.Description),
             cancellationToken);
 
-        return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error!.ToProblem();
+        return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem();
     }
 
     private static async Task<Results<Ok<TaskResponse>, ProblemHttpResult>> ChangeStatusAsync(
@@ -153,7 +151,7 @@ internal static class TaskEndpoints
             new ChangeTaskStatusCommand(id, request.Status),
             cancellationToken);
 
-        return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error!.ToProblem();
+        return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error.ToProblem();
     }
 
     private static async Task<Results<NoContent, ProblemHttpResult>> DeleteAsync(
@@ -163,6 +161,18 @@ internal static class TaskEndpoints
     {
         var result = await handler.HandleAsync(new DeleteTaskCommand(id), cancellationToken);
 
-        return result.IsSuccess ? TypedResults.NoContent() : result.Error!.ToProblem();
+        return result.IsSuccess ? TypedResults.NoContent() : result.Error.ToProblem();
+    }
+
+    // Documents one parameter of an operation, if it has one by that name.
+    private static void Describe(OpenApiOperation operation, string parameterName, string description)
+    {
+        var parameter = operation.Parameters
+            .FirstOrDefault(candidate => string.Equals(candidate.Name, parameterName, StringComparison.Ordinal));
+
+        if (parameter is not null)
+        {
+            parameter.Description = description;
+        }
     }
 }

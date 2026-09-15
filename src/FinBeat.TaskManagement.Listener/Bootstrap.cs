@@ -10,8 +10,8 @@ namespace FinBeat.TaskManagement.Listener;
 /// <remarks>A second copy of the API's bootstrap on purpose: this is a separate deployable whose only permitted reference is Contracts, and Contracts is dependency-free so it cannot hold hosting code.</remarks>
 internal static class Bootstrap
 {
-    /// <summary>The configuration section bound to <see cref="RabbitMqTransportOptions"/>.</summary>
-    internal const string RabbitMqSectionName = "RabbitMq";
+    // Half of a cross-deployable contract: the API binds the same section name to reach the same broker.
+    private const string RabbitMqSectionName = "RabbitMq";
 
     private const string OpenTelemetrySection = "OpenTelemetry";
 
@@ -71,8 +71,7 @@ internal static class Bootstrap
             .ConfigureResource(resource => resource.AddService(serviceName))
             .WithTracing(tracing =>
             {
-                tracing.AddHttpClientInstrumentation()
-                    .AddSource(MassTransitActivitySource);
+                tracing.AddSource(MassTransitActivitySource);
 
                 // Opt in: with no endpoint configured every span would fail against localhost:4317.
                 if (!string.IsNullOrWhiteSpace(otlpEndpoint))

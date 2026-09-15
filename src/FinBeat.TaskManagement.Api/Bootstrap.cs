@@ -15,23 +15,12 @@ using Npgsql;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
-using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace FinBeat.TaskManagement.Api;
 
 /// <summary>Composes the API host, so that Program.cs stays a readable outline of startup.</summary>
 internal static class Bootstrap
 {
-    private const string OpenTelemetrySection = "OpenTelemetry";
-
-    private const string ServiceNameKey = "ServiceName";
-
-    private const string OtlpEndpointKey = "OtlpEndpoint";
-
-    private const string OtlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT";
-
-    // MassTransit emits its own ActivitySource, so subscribing needs the name and no extra package.
-    private const string MassTransitActivitySource = "MassTransit";
 
     /// <summary>A console logger for the window before configuration is read, so a failure while building the host is not lost.</summary>
     internal static Serilog.ILogger CreateBootstrapLogger() =>
@@ -95,20 +84,12 @@ internal static class Bootstrap
 
             options.SupportNonNullableReferenceTypes();
 
-            // The XML from this assembly and from Application, which owns TaskResponse.
-            IncludeXmlComments(options, Assembly.GetExecutingAssembly());
-            IncludeXmlComments(options, typeof(TaskResponse).Assembly);
+            // The XML from this assembly and from Application, which owns TaskResponse. Swashbuckle
+            // resolves both paths itself, and a project reference copies its XML to the consumer's
+            // output, so a missing file means the build changed and is worth failing on.
+            options.IncludeXmlComments(Assembly.GetExecutingAssembly());
+            options.IncludeXmlComments(typeof(TaskResponse).Assembly);
         });
-
-    private static void IncludeXmlComments(SwaggerGenOptions options, Assembly assembly)
-    {
-        var documentation = Path.Combine(AppContext.BaseDirectory, $"{assembly.GetName().Name}.xml");
-
-        if (File.Exists(documentation))
-        {
-            options.IncludeXmlComments(documentation);
-        }
-    }
 
     // The use cases are registered from the host rather than from Application, which may reference
     // EF Core and nothing else - IServiceCollection included.
@@ -144,9 +125,10 @@ internal static class Bootstrap
 
     private static void AddTelemetry(this WebApplicationBuilder builder)
     {
-        var section = builder.Configuration.GetSection(OpenTelemetrySection);
-        var serviceName = section[ServiceNameKey] ?? builder.Environment.ApplicationName;
-        var otlpEndpoint = section[OtlpEndpointKey] ?? Environment.GetEnvironmentVariable(OtlpEndpointVariable);
+        var section = builder.Configuration.GetSection("OpenTelemetry");
+        var serviceName = section["ServiceName"] ?? builder.Environment.ApplicationName;
+        var otlpEndpoint = section["OtlpEndpoint"]
+            ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(serviceName))
@@ -155,7 +137,9 @@ internal static class Bootstrap
                 tracing.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddNpgsql()
-                    .AddSource(MassTransitActivitySource);
+                    // MassTransit emits its own ActivitySource, so subscribing needs the name and
+                    // no extra package.
+                    .AddSource("MassTransit");
 
                 // Opt in: with no endpoint configured every span would fail against localhost:4317.
                 if (!string.IsNullOrWhiteSpace(otlpEndpoint))

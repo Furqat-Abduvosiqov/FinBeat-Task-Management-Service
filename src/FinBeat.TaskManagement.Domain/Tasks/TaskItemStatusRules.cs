@@ -16,19 +16,10 @@ public static class TaskItemStatusRules
     /// </returns>
     public static bool CanTransition(TaskItemStatus from, TaskItemStatus to) => (from, to) switch
     {
-        (TaskItemStatus.New, TaskItemStatus.InProgress) => true,
-        (TaskItemStatus.New, TaskItemStatus.Completed) => true,
-        (TaskItemStatus.New, TaskItemStatus.Archived) => true,
-
-        (TaskItemStatus.InProgress, TaskItemStatus.Completed) => true,
-        (TaskItemStatus.InProgress, TaskItemStatus.New) => true,
-        (TaskItemStatus.InProgress, TaskItemStatus.Archived) => true,
-
-        (TaskItemStatus.Completed, TaskItemStatus.InProgress) => true,
-        (TaskItemStatus.Completed, TaskItemStatus.Archived) => true,
-
+        (TaskItemStatus.New, TaskItemStatus.InProgress or TaskItemStatus.Completed or TaskItemStatus.Archived) => true,
+        (TaskItemStatus.InProgress, TaskItemStatus.New or TaskItemStatus.Completed or TaskItemStatus.Archived) => true,
+        (TaskItemStatus.Completed, TaskItemStatus.InProgress or TaskItemStatus.Archived) => true,
         (TaskItemStatus.Archived, TaskItemStatus.New) => true,
-
         _ => false,
     };
 }

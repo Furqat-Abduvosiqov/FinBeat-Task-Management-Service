@@ -93,6 +93,9 @@
 
     <!-- Observability: the specification asks for logging to console or to a text file. Both here. -->
     <PackageVersion Include="Serilog.AspNetCore" Version="8.0.3" />
+    <!-- The Listener is a worker: Serilog.AspNetCore would frameworkReference Microsoft.AspNetCore.App for an AddSerilog that actually lives in Extensions.Hosting. -->
+    <PackageVersion Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+    <PackageVersion Include="Serilog.Settings.Configuration" Version="8.0.4" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
 

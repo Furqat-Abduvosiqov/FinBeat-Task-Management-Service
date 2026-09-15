@@ -15,9 +15,6 @@ internal sealed class ValidationFilter<TRequest>(IValidator<TRequest> validator)
     /// <inheritdoc />
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(next);
-
         var request = context.Arguments.OfType<TRequest>().FirstOrDefault();
 
         if (request is null)
@@ -36,6 +33,6 @@ internal sealed class ValidationFilter<TRequest>(IValidator<TRequest> validator)
         // need a second branch for the validated ones.
         return TypedResults.ValidationProblem(
             result.ToDictionary(),
-            extensions: new Dictionary<string, object?> { [ProblemExtensions.Code] = ErrorCode });
+            extensions: new Dictionary<string, object?> { [ErrorResults.CodeMember] = ErrorCode });
     }
 }

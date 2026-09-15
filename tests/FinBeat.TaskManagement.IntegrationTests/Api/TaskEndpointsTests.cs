@@ -220,7 +220,7 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
         var response = await _client.GetAsync("/tasks?pageSize=1000");
 
         await ShouldBeAProblemAsync(response);
-        (await ReadJsonAsync(response)).GetProperty("code").GetString().ShouldBe("tasks.paging.invalid");
+        (await ReadJsonAsync(response)).GetProperty("code").GetString().ShouldBe("task.paging.invalid");
     }
 
     private static Guid Id(JsonElement task) => task.GetProperty("id").GetGuid();

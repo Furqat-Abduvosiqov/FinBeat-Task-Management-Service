@@ -13,8 +13,13 @@ try
 catch (Exception exception)
 {
     Log.Fatal(exception, "Listener host terminated unexpectedly");
+    
+    // Non-zero, or a worker that could not reach the broker reports a clean shutdown and no restart policy fires.
+    return 1;
 }
 finally
 {
     Log.CloseAndFlush();
 }
+
+return 0;
