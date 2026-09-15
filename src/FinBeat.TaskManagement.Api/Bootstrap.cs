@@ -59,6 +59,11 @@ internal static class Bootstrap
         builder.Services.Configure<JsonOptions>(options =>
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
+        // Defaults to true only in Development, so without this a body the binder cannot read - or a
+        // query value it cannot parse - is a bare 400 with no body in production, and the handler
+        // below never sees it. Every failure carries problem details in every environment or none do.
+        builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
+
         builder.Services.AddValidatorsFromAssemblyContaining<CreateTaskRequestValidator>(includeInternalTypes: true);
 
         builder.Services.AddEndpointsApiExplorer();

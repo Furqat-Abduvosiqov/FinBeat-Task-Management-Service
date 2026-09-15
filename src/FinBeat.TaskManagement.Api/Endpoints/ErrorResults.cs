@@ -15,7 +15,7 @@ internal static class ErrorResults
     internal static ProblemHttpResult ToProblem(this Error error) => TypedResults.Problem(
         statusCode: StatusCodeFor(error.Type),
         detail: error.Description,
-        extensions: new Dictionary<string, object?> { ["code"] = error.Code });
+        extensions: new Dictionary<string, object?> { [ProblemExtensions.Code] = error.Code });
 
     private static int StatusCodeFor(ErrorType type) => type switch
     {

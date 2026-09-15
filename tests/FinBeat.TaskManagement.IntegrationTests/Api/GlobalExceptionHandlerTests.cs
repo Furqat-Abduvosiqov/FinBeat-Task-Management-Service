@@ -32,7 +32,7 @@ public sealed class GlobalExceptionHandlerTests
         var response = await app.GetTestClient().GetAsync(ThrowingRoute);
 
         response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
-        response.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+        response.Content.Headers.ContentType.ShouldNotBeNull().MediaType.ShouldBe("application/problem+json");
 
         var problem = await response.ReadJsonAsync();
         problem.GetProperty("status").GetInt32().ShouldBe(500);

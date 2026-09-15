@@ -36,6 +36,6 @@ internal sealed class ValidationFilter<TRequest>(IValidator<TRequest> validator)
         // need a second branch for the validated ones.
         return TypedResults.ValidationProblem(
             result.ToDictionary(),
-            extensions: new Dictionary<string, object?> { ["code"] = ErrorCode });
+            extensions: new Dictionary<string, object?> { [ProblemExtensions.Code] = ErrorCode });
     }
 }

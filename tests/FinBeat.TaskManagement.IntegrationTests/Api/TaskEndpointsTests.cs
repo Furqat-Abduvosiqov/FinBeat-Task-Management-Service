@@ -62,7 +62,7 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
         var response = await _client.PostAsJsonAsync("/tasks", new { title, description = (string?)null });
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        response.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+        response.Content.Headers.ContentType.ShouldNotBeNull().MediaType.ShouldBe("application/problem+json");
 
         ShouldReportFieldError(await ReadJsonAsync(response), nameof(CreateTaskRequest.Title));
     }
@@ -182,8 +182,15 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
             "/tasks",
             new StringContent("{ not json", Encoding.UTF8, "application/json"));
 
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        response.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+        await ShouldBeAProblemAsync(response);
+    }
+
+    [Fact]
+    public async Task A_status_the_query_binder_cannot_parse_still_answers_with_problem_details()
+    {
+        // The binder rejects this before any filter or handler runs. Left to the framework it would
+        // be an empty 400 outside Development, which a client parsing the documented body chokes on.
+        await ShouldBeAProblemAsync(await _client.GetAsync("/tasks?status=Bogus"));
     }
 
     [Fact]
@@ -201,6 +208,17 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
     }
 
     private static Guid Id(JsonElement task) => task.GetProperty("id").GetGuid();
+
+    /// <summary>Asserts a 400 that actually carries a problem body, rather than an empty response.</summary>
+    private static async Task ShouldBeAProblemAsync(HttpResponseMessage response)
+    {
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
+        // ShouldNotBeNull first: ContentType?.MediaType.ShouldBe(...) short-circuits away the whole
+        // assertion when there is no content type, which is exactly the case worth catching.
+        response.Content.Headers.ContentType.ShouldNotBeNull().MediaType.ShouldBe("application/problem+json");
+        (await response.ReadJsonAsync()).GetProperty("status").GetInt32().ShouldBe(400);
+    }
 
     /// <summary>Asserts the body names the offending field and still carries the shared error code.</summary>
     private static void ShouldReportFieldError(JsonElement problem, string field)
