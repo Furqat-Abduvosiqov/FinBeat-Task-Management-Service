@@ -16,13 +16,10 @@ public sealed class GetTaskByIdHandler(IApplicationDbContext context)
     /// <param name="query">The task to read.</param>
     /// <param name="cancellationToken">Cancels the operation.</param>
     /// <returns>The task, or a not-found error.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="query"/> is null.</exception>
     public async Task<Result<TaskResponse>> HandleAsync(
         GetTaskByIdQuery query,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(query);
-
         var task = await context.Tasks.AsNoTracking().FindByIdAsync(query.TaskId, cancellationToken);
 
         return task is null

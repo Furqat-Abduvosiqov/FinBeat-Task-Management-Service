@@ -11,8 +11,6 @@ internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
     /// <inheritdoc />
     public void Configure(EntityTypeBuilder<TaskItem> builder)
     {
-        ArgumentNullException.ThrowIfNull(builder);
-
         // Model building fails without this: IDomainEvent is an interface, so EF can map DomainEvents
         // neither as a scalar nor as a navigation.
         builder.Ignore(task => task.DomainEvents);

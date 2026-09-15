@@ -10,9 +10,6 @@ internal sealed class EnumSchemaFilter : ISchemaFilter
     /// <inheritdoc />
     public void Apply(OpenApiSchema schema, SchemaFilterContext context)
     {
-        ArgumentNullException.ThrowIfNull(schema);
-        ArgumentNullException.ThrowIfNull(context);
-
         if (context.Type.IsEnum)
         {
             // Swashbuckle has already written the type's own summary here, which is worth keeping.

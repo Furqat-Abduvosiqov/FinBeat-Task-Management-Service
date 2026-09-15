@@ -29,13 +29,10 @@ public sealed class GetTasksHandler(IApplicationDbContext context)
     /// <param name="query">The status to filter by, and which page to return.</param>
     /// <param name="cancellationToken">Cancels the operation.</param>
     /// <returns>The matching page, oldest first, or a validation error.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="query"/> is null.</exception>
     public async Task<Result<Page<TaskResponse>>> HandleAsync(
         GetTasksQuery query,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(query);
-
         if (query.Status is { } requested && !Enum.IsDefined(requested))
         {
             return Result.Failure<Page<TaskResponse>>(TaskErrors.UnknownStatus(requested));
@@ -57,8 +54,6 @@ public sealed class GetTasksHandler(IApplicationDbContext context)
         var totalItems = await tasks.LongCountAsync(cancellationToken);
 
         var matches = await tasks
-            // Id breaks ties, since CreatedAt is not unique and two pages could otherwise overlap.
-            // Defensive: PostgreSQL happens to be stable here, so no test can fail on it.
             .OrderBy(task => task.CreatedAt)
             .ThenBy(task => task.Id)
             .Skip((query.PageNumber - 1) * query.PageSize)

@@ -26,12 +26,8 @@ public static class DependencyInjection
     /// <param name="services">The service collection to register into.</param>
     /// <param name="configuration">The configuration the connection settings are read from.</param>
     /// <returns>The same <paramref name="services"/> instance, for chaining.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="services"/> or <paramref name="configuration"/> is null.</exception>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(configuration);
-
         services.AddOptions<DatabaseOptions>()
             .Bind(configuration.GetSection(DatabaseOptions.SectionName))
             .ValidateDataAnnotations()

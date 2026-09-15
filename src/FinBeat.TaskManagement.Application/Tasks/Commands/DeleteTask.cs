@@ -23,13 +23,10 @@ public sealed class DeleteTaskHandler(
     /// <param name="command">The task to delete.</param>
     /// <param name="cancellationToken">Cancels the operation.</param>
     /// <returns>Success, or a not-found error.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="command"/> is null.</exception>
     public async Task<Result> HandleAsync(
         DeleteTaskCommand command,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(command);
-
         var task = await context.Tasks.FindByIdAsync(command.TaskId, cancellationToken);
 
         if (task is null)

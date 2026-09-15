@@ -25,13 +25,10 @@ public sealed class CreateTaskHandler(
     /// <param name="command">What to create it with.</param>
     /// <param name="cancellationToken">Cancels the operation.</param>
     /// <returns>The task that was created, or a validation error saying why it was rejected.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="command"/> is null.</exception>
     public async Task<Result<TaskResponse>> HandleAsync(
         CreateTaskCommand command,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(command);
-
         TaskItem task;
 
         try

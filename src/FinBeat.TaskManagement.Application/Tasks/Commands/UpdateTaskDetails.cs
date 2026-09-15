@@ -25,13 +25,10 @@ public sealed class UpdateTaskDetailsHandler(
     /// <param name="command">The task, and the values to give it.</param>
     /// <param name="cancellationToken">Cancels the operation.</param>
     /// <returns>The updated task, or an error if it does not exist or the values were rejected.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="command"/> is null.</exception>
     public async Task<Result<TaskResponse>> HandleAsync(
         UpdateTaskDetailsCommand command,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(command);
-
         var task = await context.Tasks.FindByIdAsync(command.TaskId, cancellationToken);
 
         if (task is null)

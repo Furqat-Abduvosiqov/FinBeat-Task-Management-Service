@@ -24,13 +24,10 @@ public sealed class ChangeTaskStatusHandler(
     /// <param name="command">The task, and the status to move it to.</param>
     /// <param name="cancellationToken">Cancels the operation.</param>
     /// <returns>The updated task, or an error if it does not exist or the move is not allowed.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="command"/> is null.</exception>
     public async Task<Result<TaskResponse>> HandleAsync(
         ChangeTaskStatusCommand command,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(command);
-
         if (!Enum.IsDefined(command.Status))
         {
             return Result.Failure<TaskResponse>(TaskErrors.UnknownStatus(command.Status));

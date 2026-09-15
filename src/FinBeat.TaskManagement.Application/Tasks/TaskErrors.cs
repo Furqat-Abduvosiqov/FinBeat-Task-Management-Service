@@ -37,13 +37,8 @@ public static class TaskErrors
 
     /// <summary>Translates a domain exception, keeping the error code the domain assigned.</summary>
     /// <param name="exception">The exception a domain call raised.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="exception"/> is null.</exception>
-    public static Error FromDomain(DomainException exception)
-    {
-        ArgumentNullException.ThrowIfNull(exception);
-
-        return new Error(exception.ErrorCode, exception.Message, Classify(exception));
-    }
+    public static Error FromDomain(DomainException exception) =>
+        new(exception.ErrorCode, exception.Message, Classify(exception));
 
     private static ErrorType Classify(DomainException exception) => exception switch
     {

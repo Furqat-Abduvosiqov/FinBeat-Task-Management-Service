@@ -29,24 +29,12 @@ public class Result
 
     /// <summary>A failure.</summary>
     /// <param name="error">Why the operation failed.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
-    public static Result Failure(Error error)
-    {
-        ArgumentNullException.ThrowIfNull(error);
-
-        return new Result(error);
-    }
+    public static Result Failure(Error error) => new(error);
 
     /// <summary>A failure of an operation that would otherwise have produced a value.</summary>
     /// <typeparam name="TValue">The type the operation would have produced.</typeparam>
     /// <param name="error">Why the operation failed.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="error"/> is null.</exception>
-    public static Result<TValue> Failure<TValue>(Error error)
-    {
-        ArgumentNullException.ThrowIfNull(error);
-
-        return new Result<TValue>(error);
-    }
+    public static Result<TValue> Failure<TValue>(Error error) => new(error);
 }
 
 /// <summary>The outcome of a use case that produces a value.</summary>
