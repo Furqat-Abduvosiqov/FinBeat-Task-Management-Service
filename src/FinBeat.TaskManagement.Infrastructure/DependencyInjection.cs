@@ -43,15 +43,12 @@ public static class DependencyInjection
 
     private static void AddMessaging(this IServiceCollection services, IConfiguration configuration)
     {
-        // MassTransit reads the host, port, virtual host and credentials from these options and already
-        // defaults them to localhost:5672 guest/guest, so UsingRabbitMq needs no Host call of its own.
+        // MassTransit binds these itself and defaults to localhost:5672 guest/guest, so no Host call.
         services.AddOptions<RabbitMqTransportOptions>().Bind(configuration.GetSection(RabbitMqSectionName));
 
         services.AddMassTransit(bus =>
         {
-            // The outbox writes a publish into ApplicationDbContext inside the caller's transaction and
-            // delivers it afterwards, so a task is never saved without its event and an event is never
-            // sent for a task that rolled back.
+            // A publish and the state change that caused it commit together, or neither does.
             bus.AddEntityFrameworkOutbox<ApplicationDbContext>(outbox =>
             {
                 outbox.UsePostgres();

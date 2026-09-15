@@ -22,4 +22,9 @@
         <ProjectReference Include="..\FinBeat.TaskManagement.Infrastructure\FinBeat.TaskManagement.Infrastructure.csproj" />
     </ItemGroup>
 
+    <!-- Bootstrap and GlobalExceptionHandler are internal; the pipeline test drives them directly. -->
+    <ItemGroup>
+        <InternalsVisibleTo Include="FinBeat.TaskManagement.IntegrationTests" />
+    </ItemGroup>
+
 </Project>

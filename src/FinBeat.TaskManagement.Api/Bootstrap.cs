@@ -20,12 +20,11 @@ internal static class Bootstrap
     // MassTransit emits its own ActivitySource, so subscribing needs the name and no extra package.
     private const string MassTransitActivitySource = "MassTransit";
 
-    /// <summary>A console logger for the window before configuration has been read.</summary>
-    /// <remarks>Without it, a failure while building the host would be lost entirely.</remarks>
+    /// <summary>A console logger for the window before configuration is read, so a failure while building the host is not lost.</summary>
     internal static Serilog.ILogger CreateBootstrapLogger() =>
         new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
 
-    /// <summary>Registers logging, tracing, Swagger and the infrastructure adapters.</summary>
+    /// <summary>Registers logging, tracing, error handling, Swagger and the infrastructure adapters.</summary>
     internal static WebApplicationBuilder AddApiHost(this WebApplicationBuilder builder)
     {
         builder.Host.UseSerilog((context, services, configuration) => configuration
@@ -33,6 +32,10 @@ internal static class Bootstrap
             .ReadFrom.Services(services));
 
         builder.AddTelemetry();
+
+        // Without AddProblemDetails the handler has nothing to write through and the body comes back empty.
+        builder.Services.AddProblemDetails();
+        builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
@@ -44,6 +47,7 @@ internal static class Bootstrap
     /// <summary>Builds the request pipeline.</summary>
     internal static WebApplication UseApiPipeline(this WebApplication app)
     {
+        app.UseExceptionHandler();
         app.UseSerilogRequestLogging();
 
         if (app.Environment.IsDevelopment())

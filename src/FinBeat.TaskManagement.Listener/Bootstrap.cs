@@ -5,11 +5,7 @@ using Serilog;
 namespace FinBeat.TaskManagement.Listener;
 
 /// <summary>Composes the listener host, so that Program.cs stays a readable outline of startup.</summary>
-/// <remarks>
-/// Deliberately a second copy of the API's bootstrap rather than a shared one. This service is a
-/// separate deployable and may share only the wire format with the API, so the only project it can
-/// reference is Contracts - which is itself dependency-free and so cannot hold hosting code.
-/// </remarks>
+/// <remarks>A second copy of the API's bootstrap on purpose: this is a separate deployable whose only permitted reference is Contracts, and Contracts is dependency-free so it cannot hold hosting code.</remarks>
 internal static class Bootstrap
 {
     private const string OpenTelemetrySection = "OpenTelemetry";
@@ -23,7 +19,7 @@ internal static class Bootstrap
     // MassTransit emits its own ActivitySource, so subscribing needs the name and no extra package.
     private const string MassTransitActivitySource = "MassTransit";
 
-    /// <summary>A console logger for the window before configuration has been read.</summary>
+    /// <summary>A console logger for the window before configuration is read, so a failure while building the host is not lost.</summary>
     internal static Serilog.ILogger CreateBootstrapLogger() =>
         new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
 

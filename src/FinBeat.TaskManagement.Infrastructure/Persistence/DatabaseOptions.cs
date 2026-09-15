@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace FinBeat.TaskManagement.Infrastructure.Persistence;
 
 /// <summary>The database settings, bound from the <c>ConnectionStrings</c> configuration section.</summary>
-/// <remarks>Validated at host start, so a missing connection string is named at startup rather than surfacing as a null reference inside Npgsql on whichever request runs the first query.</remarks>
+/// <remarks>Validated at host start, so a missing value is named there instead of surfacing from inside Npgsql on the first query.</remarks>
 public sealed class DatabaseOptions
 {
     /// <summary>The configuration section these settings bind from.</summary>

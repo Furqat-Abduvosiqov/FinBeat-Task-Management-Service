@@ -21,12 +21,15 @@
         <!-- ConfigurationBuilder.AddInMemoryCollection, to drive AddInfrastructure as the Api does. -->
         <PackageReference Include="Microsoft.Extensions.Configuration" />
         <PackageReference Include="Testcontainers.PostgreSql" />
+        <PackageReference Include="Microsoft.AspNetCore.TestHost" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Domain\FinBeat.TaskManagement.Domain.csproj" />
         <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Application\FinBeat.TaskManagement.Application.csproj" />
         <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Infrastructure\FinBeat.TaskManagement.Infrastructure.csproj" />
+        <!-- The host itself, so the exception-handling pipeline is tested as it is composed. -->
+        <ProjectReference Include="..\..\src\FinBeat.TaskManagement.Api\FinBeat.TaskManagement.Api.csproj" />
     </ItemGroup>
 
     <ItemGroup>

@@ -9,11 +9,7 @@ using Shouldly;
 namespace FinBeat.TaskManagement.IntegrationTests.Messaging;
 
 /// <summary>Proves the broker address comes from configuration rather than from a hard-coded fallback.</summary>
-/// <remarks>
-/// Resolving the bus builds its topology and address; only <c>StartAsync</c> would dial the broker,
-/// so neither test needs RabbitMQ running. Disposal must be asynchronous: resolving the bus creates
-/// MassTransit's usage tracker, which implements only <see cref="IAsyncDisposable"/>.
-/// </remarks>
+/// <remarks>Only <c>StartAsync</c> dials the broker, so neither test needs RabbitMQ running. Disposal has to be asynchronous: the bus creates MassTransit's usage tracker, which is <see cref="IAsyncDisposable"/> only.</remarks>
 public sealed class RabbitMqRegistrationTests
 {
     [Fact]
@@ -35,8 +31,7 @@ public sealed class RabbitMqRegistrationTests
     [Fact]
     public async Task Bus_falls_back_to_the_MassTransit_defaults_when_the_section_is_absent()
     {
-        // No section, and no `?? "localhost"` of our own: RabbitMqTransportOptions already defaults to
-        // localhost:5672 on the root virtual host, which is what a developer machine wants.
+        // No section, and no `?? "localhost"` of our own - the defaults already say localhost:5672.
         await using var provider = BuildProvider([]);
 
         var address = provider.GetRequiredService<IBusControl>().Address;
