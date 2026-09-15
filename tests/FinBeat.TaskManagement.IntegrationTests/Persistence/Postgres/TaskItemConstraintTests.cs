@@ -22,9 +22,7 @@ public sealed class TaskItemConstraintTests(PostgresFixture fixture)
     [Fact]
     public async Task A_status_outside_the_declared_range_is_rejected_by_the_check_constraint()
     {
-        // 0 specifically: TaskItemStatus starts at 1 and has no zero member, so a default-initialised
-        // int is exactly the value that must never reach the table. With the column mapped as a plain
-        // integer, this constraint is the only thing that stops it.
+        // 0 specifically: TaskItemStatus has no zero member, so this is the value a default-initialised int would produce.
         await using var command = Insert(title: "Renew passport", status: 0);
 
         var exception = await Should.ThrowAsync<PostgresException>(() => command.ExecuteNonQueryAsync());
@@ -34,9 +32,8 @@ public sealed class TaskItemConstraintTests(PostgresFixture fixture)
         exception.ConstraintName.ShouldBe("ck_tasks_status");
     }
 
-    // Bypasses EF and the domain entirely. That is the point of both tests above: they prove the
-    // column definition and the constraint are enforced by PostgreSQL itself, not merely by model
-    // facets that only hold while writes go through EF.
+    // Bypasses EF and the domain entirely: the point is to prove PostgreSQL enforces this itself,
+    // not just EF's model facets.
     private NpgsqlCommand Insert(string title, int status)
     {
         var command = fixture.DataSource.CreateCommand("""

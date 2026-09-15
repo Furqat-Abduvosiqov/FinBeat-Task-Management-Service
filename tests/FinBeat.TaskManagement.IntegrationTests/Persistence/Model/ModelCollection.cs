@@ -1,9 +1,6 @@
 namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Model;
 
-/// <summary>
-/// Groups every <see cref="ModelFixture"/> consumer onto one shared instance, so the DI container and
-/// the EF Core model it builds are built exactly once per test run instead of once per test class.
-/// </summary>
+/// <summary>Groups every <see cref="ModelFixture"/> consumer so the model is built once per test run, not once per class.</summary>
 [CollectionDefinition(nameof(ModelCollection))]
 public sealed class ModelCollection : ICollectionFixture<ModelFixture>
 {

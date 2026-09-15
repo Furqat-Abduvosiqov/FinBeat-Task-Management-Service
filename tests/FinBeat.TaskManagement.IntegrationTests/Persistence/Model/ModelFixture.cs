@@ -9,18 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Model;
 
-/// <summary>
-/// Builds the EF Core model exactly the way the application builds it: through
-/// <see cref="DependencyInjection.AddInfrastructure"/>, never a hand-rolled
-/// <see cref="Microsoft.EntityFrameworkCore.DbContextOptionsBuilder"/>. A test that called
-/// <c>UseSnakeCaseNamingConvention</c> itself would only prove that the test produces snake_case, not
-/// that the application does.
-/// </summary>
-/// <remarks>
-/// <see cref="ConnectionString"/> parses but is never dialled: building a model does not open a
-/// connection, so there is no need for a real database here. See the Postgres fixture for the tests
-/// that actually talk to PostgreSQL.
-/// </remarks>
+/// <summary>Builds the EF Core model the way the application does: through <see cref="DependencyInjection.AddInfrastructure"/>, never a hand-rolled <see cref="Microsoft.EntityFrameworkCore.DbContextOptionsBuilder"/>.</summary>
+/// <remarks><see cref="ConnectionString"/> parses but is never dialled: building a model needs no real database.</remarks>
 public sealed class ModelFixture : IDisposable
 {
     /// <summary>A syntactically valid connection string that this fixture never connects to.</summary>
@@ -52,11 +42,7 @@ public sealed class ModelFixture : IDisposable
     public IModel Model { get; }
 
     /// <summary>The design-time model the same context produces.</summary>
-    /// <remarks>
-    /// Not the same object as <see cref="Model"/>: EF strips design-time-only annotations from the
-    /// runtime model. This is the model migrations are scaffolded from, so it is the one to compare
-    /// against when asking whether what gets migrated matches what gets queried.
-    /// </remarks>
+    /// <remarks>Not the same object as <see cref="Model"/>: EF strips design-time-only annotations from the runtime model.</remarks>
     public IModel DesignTimeModel { get; }
 
     /// <summary><see cref="TaskItem"/>'s entity type within <see cref="Model"/>.</summary>
@@ -82,15 +68,8 @@ public sealed class ModelFixture : IDisposable
             })
             .Build();
 
-    /// <summary>
-    /// Builds an <see cref="ApplicationDbContext"/> the way <c>dotnet ef</c> does — from a bare
-    /// connection string rather than through DI. The caller owns disposal.
-    /// </summary>
-    /// <remarks>
-    /// Note what is deliberately absent: no naming convention is applied here. The context applies it
-    /// itself in <c>OnConfiguring</c>, which is the property the parity test exists to confirm — a
-    /// context built this crudely still has to produce the model the application queries.
-    /// </remarks>
+    /// <summary>Builds an <see cref="ApplicationDbContext"/> the way <c>dotnet ef</c> does — from a bare connection string rather than through DI. The caller owns disposal.</summary>
+    /// <remarks>No naming convention applied here on purpose: <c>OnConfiguring</c> applies it, which is exactly what the parity test confirms.</remarks>
     public static ApplicationDbContext CreateDesignTimeContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>();

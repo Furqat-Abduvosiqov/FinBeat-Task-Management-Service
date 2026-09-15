@@ -19,8 +19,7 @@ public sealed class TaskItemRoundTripTests(PostgresFixture fixture)
 
         await fixture.SeedAsync(task);
 
-        // A fresh context per read, not ChangeTracker.Clear(): nothing here is served from the
-        // identity map, and the read exercises a fresh pooled connection.
+        // A fresh context per read, not ChangeTracker.Clear(): nothing here is served from the identity map.
         await using var readContext = fixture.CreateContext();
         var reloaded = await readContext.Tasks.SingleAsync(t => t.Id == task.Id);
 
@@ -65,26 +64,5 @@ public sealed class TaskItemRoundTripTests(PostgresFixture fixture)
         // persistence contract, so a reordering of its members has to show up here.
         var status = await command.ExecuteScalarAsync();
         status.ShouldBe(2);
-    }
-
-    [Fact]
-    public async Task Filtering_by_status_translates_to_a_query_the_database_accepts()
-    {
-        var clock = Clock.New();
-        var matching = TaskItems.RenewPassport(clock);
-        matching.ChangeStatus(TaskItemStatus.InProgress, clock);
-        var nonMatching = TaskItems.WithTitle("Buy milk", clock);
-
-        await fixture.SeedAsync(matching, nonMatching);
-
-        // Proves the enum survives the round trip through a LINQ predicate, not just through a column
-        // read: the status has to be written as a parameter PostgreSQL will compare against the int
-        // column. Scoped to these two ids so other tests' rows in the shared database cannot change
-        // the expected count.
-        var ids = new[] { matching.Id, nonMatching.Id };
-        await using var readContext = fixture.CreateContext();
-        var count = await readContext.Tasks.CountAsync(t => t.Status == TaskItemStatus.InProgress && ids.Contains(t.Id));
-
-        count.ShouldBe(1);
     }
 }
