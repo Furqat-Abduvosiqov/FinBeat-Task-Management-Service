@@ -1,7 +1,7 @@
 using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
 
-namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Postgres;
+namespace FinBeat.TaskManagement.IntegrationTests.Persistence;
 
 /// <summary>Ready-made <see cref="TaskItem"/> instances for the Postgres persistence tests.</summary>
 /// <remarks>"Renew passport" is the default title because no test using it asserts on the title text; one that does passes it explicitly.</remarks>

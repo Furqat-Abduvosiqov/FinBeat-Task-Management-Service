@@ -8,6 +8,10 @@ namespace FinBeat.TaskManagement.Infrastructure.Persistence;
 /// <summary>The EF Core <see cref="DbContext"/> this application persists through.</summary>
 public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
 {
+    /// <summary>The table EF records applied migrations in.</summary>
+    /// <remarks>Named explicitly because EF names the default explicitly too, at a configuration source the naming convention cannot override - so the table would stay <c>__EFMigrationsHistory</c> while its own columns became <c>migration_id</c> and <c>product_version</c>.</remarks>
+    public const string MigrationsHistoryTableName = "__ef_migrations_history";
+
     /// <summary>Creates the context.</summary>
     /// <param name="options">The context options.</param>
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
@@ -25,6 +29,7 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
         ArgumentNullException.ThrowIfNull(optionsBuilder);
 
         optionsBuilder.UseSnakeCaseNamingConvention();
+        optionsBuilder.UseNpgsql(npgsql => npgsql.MigrationsHistoryTable(MigrationsHistoryTableName));
 
         base.OnConfiguring(optionsBuilder);
     }

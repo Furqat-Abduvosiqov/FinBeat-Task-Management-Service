@@ -2,8 +2,6 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json;
 using FinBeat.TaskManagement.Api;
-using FinBeat.TaskManagement.Infrastructure.Persistence;
-using FinBeat.TaskManagement.IntegrationTests.Persistence.Model;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -77,7 +75,7 @@ public sealed class GlobalExceptionHandlerTests
         builder.WebHost.UseTestServer();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            [$"{DatabaseOptions.SectionName}:{DatabaseOptions.ConnectionStringName}"] = ModelFixture.ConnectionString
+            [TestConfiguration.ConnectionStringKey] = TestConfiguration.UnusedConnectionString
         });
 
         builder.AddApiHost();

@@ -5,7 +5,7 @@ using Npgsql;
 using Shouldly;
 using Testcontainers.PostgreSql;
 
-namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Postgres;
+namespace FinBeat.TaskManagement.IntegrationTests.Persistence;
 
 /// <summary>A throwaway PostgreSQL instance, migrated once and shared by every <c>RequiresDocker</c> test through <see cref="PostgresCollection"/>.</summary>
 public sealed class PostgresFixture : IAsyncLifetime
@@ -20,6 +20,10 @@ public sealed class PostgresFixture : IAsyncLifetime
     /// <summary>The data source the tests use for raw SQL assertions alongside EF Core.</summary>
     public NpgsqlDataSource DataSource =>
         _dataSource ?? throw new InvalidOperationException($"{nameof(InitializeAsync)} has not run yet.");
+
+    /// <summary>The migrated container's connection string, for tests that build their own container from <c>AddInfrastructure</c>.</summary>
+    public string ConnectionString =>
+        _connectionString ?? throw new InvalidOperationException($"{nameof(InitializeAsync)} has not run yet.");
 
     /// <summary>Starts the container and applies the migrations.</summary>
     public async Task InitializeAsync()
