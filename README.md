@@ -30,7 +30,7 @@ the API, which is why it references `Contracts` and nothing else.
 ### 1. Start PostgreSQL and RabbitMQ
 
 ```bash
-docker run -d --name finbeat-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=finbeat \
+docker run -d --name finbeat-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=finbeat_taskmanagement \
   -p 5432:5432 postgres:16-alpine
 
 docker run -d --name finbeat-rabbit -p 5672:5672 rabbitmq:3-alpine
@@ -44,7 +44,7 @@ every other instance and needs DDL rights at runtime.
 ```bash
 dotnet tool restore
 
-ConnectionStrings__TaskManagement="Host=localhost;Port=5432;Database=finbeat;Username=postgres;Password=postgres" \
+ConnectionStrings__TaskManagement="Host=localhost;Port=5432;Database=finbeat_taskmanagement;Username=postgres;Password=postgres" \
 dotnet ef database update \
   --project src/FinBeat.TaskManagement.Infrastructure \
   --startup-project src/FinBeat.TaskManagement.Infrastructure \
@@ -112,8 +112,8 @@ output was checked against both worked examples in the assignment. `sql/sqlserve
 logic in the T-SQL types the assignment states.
 
 ```bash
-docker exec -i finbeat-postgres psql -U postgres -d finbeat < sql/postgresql/client_daily_payments.sql
-docker exec finbeat-postgres psql -U postgres -d finbeat \
+docker exec -i finbeat-postgres psql -U postgres -d finbeat_taskmanagement < sql/postgresql/client_daily_payments.sql
+docker exec finbeat-postgres psql -U postgres -d finbeat_taskmanagement \
   -c "SELECT * FROM client.get_daily_payments(1, '2022-01-02', '2022-01-07');"
 ```
 
