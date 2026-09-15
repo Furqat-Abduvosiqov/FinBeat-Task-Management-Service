@@ -5,7 +5,7 @@ using FinBeat.TaskManagement.Application.Tasks.Commands;
 using FinBeat.TaskManagement.Application.Tasks.Queries;
 using FinBeat.TaskManagement.Domain.Tasks;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.OpenApi.Models;
+using static FinBeat.TaskManagement.Api.Endpoints.EndpointDescriptions;
 
 namespace FinBeat.TaskManagement.Api.Endpoints;
 
@@ -159,41 +159,5 @@ internal static class TaskEndpoints
         var result = await handler.HandleAsync(new DeleteTaskCommand(id), cancellationToken);
 
         return result.IsSuccess ? TypedResults.NoContent() : result.Error.ToProblem();
-    }
-
-    // Reads the transition matrix off TaskItemStatusRules instead of restating it in prose, so the
-    // published description cannot drift from rules the code has since changed.
-    private static string DescribeTransitions()
-    {
-        var statuses = Enum.GetValues<TaskItemStatus>();
-
-        var moves = statuses
-            .Select(from => (From: from, To: statuses.Where(to => TaskItemStatusRules.CanTransition(from, to))))
-            .Where(move => move.To.Any())
-            .Select(move => $"{move.From} to {JoinWithOr(move.To)}");
-
-        return string.Join("; ", moves);
-    }
-
-    // Joins the destinations of one move the way the sentence reads them: "A, B or C".
-    private static string JoinWithOr(IEnumerable<TaskItemStatus> destinations)
-    {
-        var names = destinations.Select(status => status.ToString()).ToArray();
-
-        return names.Length == 1
-            ? names[0]
-            : string.Join(", ", names[..^1]) + " or " + names[^1];
-    }
-
-    // Documents one parameter of an operation, if it has one by that name.
-    private static void Describe(OpenApiOperation operation, string parameterName, string description)
-    {
-        var parameter = operation.Parameters
-            .FirstOrDefault(candidate => string.Equals(candidate.Name, parameterName, StringComparison.Ordinal));
-
-        if (parameter is not null)
-        {
-            parameter.Description = description;
-        }
     }
 }
