@@ -1,3 +1,4 @@
+using FinBeat.TaskManagement.Contracts.Tasks;
 using FinBeat.TaskManagement.Listener.Consumers;
 using MassTransit;
 using OpenTelemetry.Resources;
@@ -23,6 +24,11 @@ internal static class Bootstrap
 
     // MassTransit emits its own ActivitySource, so subscribing needs the name and no extra package.
     private const string MassTransitActivitySource = "MassTransit";
+
+    // The other half of the alternate-exchange contract. Binding a queue re-declares the exchange the
+    // API publishes to, and an exchange argument is fixed at declare time - name a different one, or
+    // none, and the broker rejects the declare with PRECONDITION_FAILED and the listener never starts.
+    private const string UnroutableName = "unroutable";
 
     /// <summary>A console logger for the window before configuration is read, so a failure while building the host is not lost.</summary>
     internal static Serilog.ILogger CreateBootstrapLogger() =>
@@ -57,7 +63,17 @@ internal static class Bootstrap
             bus.AddConsumer<TaskStatusChangedConsumer>();
             bus.AddConsumer<TaskDeletedConsumer>();
 
-            bus.UsingRabbitMq((context, rabbit) => rabbit.ConfigureEndpoints(context));
+            bus.UsingRabbitMq((context, rabbit) =>
+            {
+                rabbit.DeployPublishTopology = true;
+
+                foreach (var integrationEvent in typeof(TaskCreated).Assembly.GetExportedTypes())
+                {
+                    rabbit.Publish(integrationEvent, exchange => exchange.BindAlternateExchangeQueue(UnroutableName));
+                }
+
+                rabbit.ConfigureEndpoints(context);
+            });
         });
     }
 
