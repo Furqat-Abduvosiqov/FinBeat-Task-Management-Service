@@ -1,5 +1,8 @@
 # Build context is the repository root. See the Api Dockerfile for why.
 #   docker build -f src/FinBeat.TaskManagement.Listener/Dockerfile .
+#
+# Floating :8.0 tags, not digests - see the Api Dockerfile for the reasoning, and keep this in step
+# with its sdk:8.0 tag and with the migrator's, or ContainerImageTests fails.
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /source

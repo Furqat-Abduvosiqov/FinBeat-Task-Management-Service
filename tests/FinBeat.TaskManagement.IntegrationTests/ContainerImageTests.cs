@@ -46,9 +46,31 @@ public sealed class ContainerImageTests
         }
     }
 
+    [Fact]
+    public void No_fixture_names_a_container_image_in_a_string_literal()
+    {
+        // AllImageReferences compares TestImages against the repository; nothing compares TestImages
+        // against the fixtures that actually start containers. A literal at a WithImage call site is
+        // drift the other two facts here are structurally unable to see.
+        var sources = new DirectoryInfo(Path.Combine(RepositoryRoot.Find().FullName, "tests"))
+            .EnumerateFiles("*.cs", SearchOption.AllDirectories)
+            .Where(file => !file.FullName.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Where(file => !file.FullName.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Where(file => file.Name != $"{nameof(ContainerImageTests)}.cs")
+            .ToArray();
+
+        // An empty scan would pass the assertion below without reading anything.
+        sources.ShouldNotBeEmpty();
+
+        sources
+            .Where(file => Regex.IsMatch(File.ReadAllText(file.FullName), @"WithImage\(\s*"""))
+            .Select(file => file.Name)
+            .ShouldBeEmpty("WithImage takes a TestImages member, never a literal.");
+    }
+
     private static ImageReference[] AllImageReferences()
     {
-        var root = RepositoryRoot();
+        var root = RepositoryRoot.Find();
 
         var compose = Regex
             .Matches(File.ReadAllText(Path.Combine(root.FullName, "docker-compose.yml")), @"^\s*image:\s*(\S+)", RegexOptions.Multiline)
@@ -66,32 +88,25 @@ public sealed class ContainerImageTests
         return [.. compose, .. dockerfiles, .. tests];
     }
 
-    /// <summary>Walks up from the test binaries to the directory holding docker-compose.yml.</summary>
-    private static DirectoryInfo RepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "docker-compose.yml")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory ?? throw new InvalidOperationException("No docker-compose.yml above the test binaries.");
-    }
-
     private sealed record ImageReference(string Repository, string Tag, string Source)
     {
         public string Reference => $"{Repository}:{Tag}";
 
         public static ImageReference Parse(string reference, string source)
         {
-            // Split on the last colon: the repository may carry a registry host and a path, and a
-            // digest-pinned reference would have an @ that never reaches here.
-            var separator = reference.LastIndexOf(':');
+            // repository[:tag][@algo:digest]. Strip the digest before splitting the tag off, or the
+            // last colon lands inside the digest and the repository key silently becomes
+            // "repo:tag@sha256" - which groups a pinned reference apart from an unpinned one and
+            // stops the conflict check from seeing them as the same image.
+            var digestAt = reference.IndexOf('@');
+            var digest = digestAt < 0 ? string.Empty : reference[digestAt..];
+            var name = digestAt < 0 ? reference : reference[..digestAt];
+
+            var separator = name.LastIndexOf(':');
 
             return separator < 0
-                ? new ImageReference(reference, "latest", source)
-                : new ImageReference(reference[..separator], reference[(separator + 1)..], source);
+                ? new ImageReference(name, "latest" + digest, source)
+                : new ImageReference(name[..separator], name[(separator + 1)..] + digest, source);
         }
     }
 }

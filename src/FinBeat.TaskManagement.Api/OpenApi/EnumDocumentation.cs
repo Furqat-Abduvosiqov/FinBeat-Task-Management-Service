@@ -3,8 +3,6 @@ using System.Globalization;
 using System.Reflection;
 using System.Text;
 using System.Xml.Linq;
-using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
 
 namespace FinBeat.TaskManagement.Api.OpenApi;
 
@@ -17,17 +15,6 @@ namespace FinBeat.TaskManagement.Api.OpenApi;
 internal static class EnumDocumentation
 {
     private static readonly ConcurrentDictionary<Assembly, XDocument?> Documents = new();
-
-    /// <summary>The schema for an enum parameter or property.</summary>
-    /// <param name="enumType">The enum being described.</param>
-    /// <returns>An integer schema listing the declared values, described one per line.</returns>
-    public static OpenApiSchema Schema(Type enumType) => new()
-    {
-        Type = "integer",
-        Format = "int32",
-        Enum = Values(enumType).Select(value => (IOpenApiAny)new OpenApiInteger(value)).ToList(),
-        Description = Describe(enumType),
-    };
 
     /// <summary>The description for an enum, keeping anything already written about the type.</summary>
     /// <param name="enumType">The enum being described.</param>
@@ -54,11 +41,6 @@ internal static class EnumDocumentation
 
         return description.ToString().TrimEnd();
     }
-
-    private static int[] Values(Type enumType) => Enum.GetValues(enumType)
-        .Cast<object>()
-        .Select(value => Convert.ToInt32(value, CultureInfo.InvariantCulture))
-        .ToArray();
 
     /// <summary>The <c>summary</c> the enum member carries in its XML documentation.</summary>
     private static string? Summary(Type enumType, string name)

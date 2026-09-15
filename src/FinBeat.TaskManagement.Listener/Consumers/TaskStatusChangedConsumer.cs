@@ -1,4 +1,4 @@
-﻿using FinBeat.TaskManagement.Contracts.Tasks;
+using FinBeat.TaskManagement.Contracts.Tasks;
 using MassTransit;
 
 namespace FinBeat.TaskManagement.Listener.Consumers;

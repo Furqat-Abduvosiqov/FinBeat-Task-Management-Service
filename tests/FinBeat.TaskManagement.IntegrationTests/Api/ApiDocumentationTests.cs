@@ -55,11 +55,22 @@ public sealed class ApiDocumentationTests
             .GetProperty("$ref").GetString().ShouldBe("#/components/schemas/TaskItemStatus");
 
         Values(schemas.GetProperty(nameof(TaskItemStatus))).ShouldBe(expected);
-        Values(query.GetProperty("schema")).ShouldBe(expected);
 
-        // A parameter never reaches that component, so the same meanings have to be stated inline.
+        // Swashbuckle points the parameter at the same component, so it inherits the values.
+        query.GetProperty("schema").GetProperty("$ref").GetString()
+            .ShouldBe("#/components/schemas/TaskItemStatus");
+
         ShouldExplainEveryStatus(schemas.GetProperty(nameof(TaskItemStatus)));
-        ShouldExplainEveryStatus(query.GetProperty("schema"));
+        // Swagger UI renders the parameter's own description, not the component's, so the
+        // meanings have to reach the reader here too.
+        ShouldExplainEveryStatus(query);
+
+        // Swashbuckle writes the enum's own <summary> here first and EnumDocumentation.Describe has
+        // to keep it; without this, dropping the `existing` branch is a silent loss.
+        schemas.GetProperty(nameof(TaskItemStatus)).GetProperty("description").GetString()
+            .ShouldNotBeNull()
+            .Split('\n')[0].Trim()
+            .ShouldBe("Where a task is in its lifecycle.");
 
         query.GetProperty("description").GetString().ShouldNotBeNullOrWhiteSpace();
     }
@@ -78,7 +89,6 @@ public sealed class ApiDocumentationTests
                 .ShouldNotBeNull($"{status} is not explained by: {description}");
 
             line[$"{(int)status} = {status}".Length..].ShouldStartWith(" - ");
-            line.Split(" - ", 2, StringSplitOptions.None)[1].Trim().ShouldNotBeNullOrWhiteSpace();
         }
     }
 

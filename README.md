@@ -46,9 +46,14 @@ Compose starts them in the order the system needs rather than all at once:
    changes stay a deploy step: no host migrates on boot, so none needs DDL rights at runtime and
    two instances cannot race each other.
 3. `listener` waits for RabbitMQ, and declares the consumer queues.
-4. `api` waits for the migrator to have **exited successfully** and for the listener to have
-   started — so the schema is there before the first request, and the earliest events it publishes
-   reach a bound queue rather than the `unroutable` one.
+4. `api` waits for the migrator to have **exited successfully**, so the schema is there before the
+   first request, and starts after `listener` for a head start rather than a guarantee —
+   `service_started` means the process exists, not that its queues are bound. Anything published in
+   that gap waits in the `unroutable` queue instead of being dropped.
+
+Published ports bind to `127.0.0.1` by default, so the stack is reachable only from the machine
+running it. Set `BIND_ADDRESS=0.0.0.0` in `.env` to share it — remember there is no authentication,
+and `DELETE /tasks/{id}` is a hard delete.
 
 Every port and credential has a default compiled into `docker-compose.yml`, so no `.env` is needed.
 Copy `.env.example` to `.env` to change one — most often a port already taken by something you
@@ -61,8 +66,9 @@ docker compose down                   # add -v to drop the database volume too
 
 The two host images publish framework-dependent onto the runtime images and run as the non-root
 `app` user. The listener's base is `runtime` rather than `aspnet`: it is a worker that references no
-web framework. `migrator` is the odd one out at about 1.6 GB, because `dotnet ef` needs the SDK —
-which is the reason it is a container that exits rather than anything the running hosts carry.
+web framework. `migrator` is the same runtime image: `dotnet ef migrations bundle` compiles
+the migrations into a single-file executable in the build stage, so the SDK cost stays there. It is
+still a container that exits rather than anything the running hosts carry.
 
 ## Running the hosts from source
 

@@ -66,10 +66,6 @@ internal static class Bootstrap
                     + "`code` extension, which is the part worth matching on.",
             });
 
-            // A query parameter reaches neither the named component a body $refs nor the serializer,
-            // so its schema has to be stated outright.
-            options.OperationFilter<EnumParameterFilter>();
-
             options.SupportNonNullableReferenceTypes();
 
             // The XML from this assembly, from Application, which owns TaskResponse, and from Domain,

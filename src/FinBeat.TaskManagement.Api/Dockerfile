@@ -1,6 +1,13 @@
 # Build context is the repository root, not this folder: the build needs global.json and the
 # Directory.*.props that pin the SDK and every package version.
 #   docker build -f src/FinBeat.TaskManagement.Api/Dockerfile .
+#
+# The SDK/runtime/aspnet base images below stay on floating :8.0 tags rather than digests, unlike
+# the pulled images in docker-compose.yml. Microsoft repoints them roughly monthly with
+# security-only patches, and this repo has no CI to refresh a pinned digest - pinning here would
+# silently stop those patches from reaching the image until a human remembered to re-pin, which is
+# a worse default than the drift postgres/rabbitmq/jaeger are pinned against. Every Dockerfile that
+# references a given tag has to stay on the same tag either way, or ContainerImageTests fails.
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /source
@@ -14,7 +21,11 @@ COPY src/FinBeat.TaskManagement.Infrastructure/*.csproj src/FinBeat.TaskManageme
 COPY src/FinBeat.TaskManagement.Api/*.csproj src/FinBeat.TaskManagement.Api/
 RUN dotnet restore src/FinBeat.TaskManagement.Api/FinBeat.TaskManagement.Api.csproj
 
-COPY src/ src/
+COPY src/FinBeat.TaskManagement.Domain/ src/FinBeat.TaskManagement.Domain/
+COPY src/FinBeat.TaskManagement.Contracts/ src/FinBeat.TaskManagement.Contracts/
+COPY src/FinBeat.TaskManagement.Application/ src/FinBeat.TaskManagement.Application/
+COPY src/FinBeat.TaskManagement.Infrastructure/ src/FinBeat.TaskManagement.Infrastructure/
+COPY src/FinBeat.TaskManagement.Api/ src/FinBeat.TaskManagement.Api/
 RUN dotnet publish src/FinBeat.TaskManagement.Api/FinBeat.TaskManagement.Api.csproj \
     --configuration Release --no-restore --output /app
 
