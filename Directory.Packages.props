@@ -86,6 +86,7 @@
 
     <!-- Integration tests: a throwaway PostgreSQL, and configuration to drive AddInfrastructure. -->
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.1.0" />
+    <PackageVersion Include="Testcontainers.RabbitMq" Version="4.1.0" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     <!-- An in-memory server, so the Api pipeline is exercised end to end without binding a port. -->
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="8.0.31" />

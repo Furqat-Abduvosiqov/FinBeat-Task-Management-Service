@@ -21,6 +21,7 @@
         <!-- ConfigurationBuilder.AddInMemoryCollection, to drive AddInfrastructure as the Api does. -->
         <PackageReference Include="Microsoft.Extensions.Configuration" />
         <PackageReference Include="Testcontainers.PostgreSql" />
+        <PackageReference Include="Testcontainers.RabbitMq" />
         <PackageReference Include="Microsoft.AspNetCore.TestHost" />
     </ItemGroup>
 

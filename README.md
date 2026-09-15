@@ -33,7 +33,7 @@ the API, which is why it references `Contracts` and nothing else.
 docker run -d --name finbeat-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=finbeat_taskmanagement \
   -p 5432:5432 postgres:16-alpine
 
-docker run -d --name finbeat-rabbit -p 5672:5672 rabbitmq:3-alpine
+docker run -d --name finbeat-rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management-alpine
 ```
 
 ### 2. Apply the migrations
@@ -51,16 +51,39 @@ dotnet ef database update \
   --context ApplicationDbContext
 ```
 
-### 3. Run the API and the listener
+### 3. Run the listener, then the API
+
+Order matters on a cold broker. Consumer queues and their bindings are declared by the **listener**
+at startup, and a fanout exchange with nothing bound to it discards what it cannot route — silently,
+with no error returned to the publisher.
 
 ```bash
-dotnet run --project src/FinBeat.TaskManagement.Api        # Swagger UI at /swagger
 dotnet run --project src/FinBeat.TaskManagement.Listener   # logs each event it receives
+dotnet run --project src/FinBeat.TaskManagement.Api        # Swagger UI at /swagger
 ```
 
 `appsettings.Development.json` already points both at the containers above, so no environment
 variables are needed for a local run. The API starts even when RabbitMQ is down: publishes go to the
 outbox table, and delivery retries in the background.
+
+### The `unroutable` queue
+
+Start them the other way round anyway and nothing is lost. Every event exchange names an alternate
+exchange, so an event published while no consumer queue is bound is diverted to the durable
+`unroutable` queue instead of being dropped:
+
+```bash
+curl -s -u guest:guest http://localhost:15672/api/queues/%2F/unroutable
+```
+
+Messages sitting there mean events were published with nothing listening. Nothing drains that queue
+automatically — it is a place to look, not a recovery mechanism.
+
+The alternate exchange is an *exchange argument*, so it is fixed when the exchange is first declared.
+Pointing this build at a broker that already carries exchanges declared without it fails the publish
+with `PRECONDITION_FAILED - inequivalent arg 'alternate-exchange'`; the event stays in the outbox and
+retries. Delete the four `FinBeat.TaskManagement.Contracts.Tasks:*` exchanges and it recovers on the
+next attempt.
 
 ## Configuration
 
