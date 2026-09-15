@@ -41,10 +41,8 @@ internal static class Bootstrap
 
         builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 
-        // Query/route enums already bind from names via Enum.TryParse; this is what makes a JSON
-        // body - request or response - carry names instead of numbers on the wire. allowIntegerValues
-        // is off because the document advertises a string enum, and accepting numbers anyway would
-        // make it lie about what the API takes.
+        // Query and route enums already bind from names (Enum.TryParse); this is what makes a JSON
+        // body, request or response, carry names too. allowIntegerValues is off so the document cannot lie.
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.Converters.Add(
                 new JsonStringEnumConverter(namingPolicy: null, allowIntegerValues: false)));
@@ -56,9 +54,8 @@ internal static class Bootstrap
         builder.Services.AddInfrastructure(builder.Configuration);
         builder.Services.AddUseCases();
 
-        // AddMassTransit already registered a bus health check; this exposes it. No DbContext check
-        // alongside it - AddDbContextCheck opens a fresh connection on every probe, and compose
-        // already gates the API's startup on postgres being healthy before it runs at all.
+        // AddMassTransit already registers a bus health check; this exposes it. No DbContext check
+        // too - compose already gates startup on postgres being healthy before the API runs at all.
         builder.Services.AddHealthChecks();
 
         return builder;
@@ -143,9 +140,8 @@ internal static class Bootstrap
                     .AddNpgsql()
                     .AddSource("MassTransit");
 
-                // AddOtlpExporter() reads this same variable itself; checking it here first keeps
-                // the opt-in - no endpoint means no exporter, not one failing against the SDK's
-                // localhost:4317 default.
+                // AddOtlpExporter() reads this variable itself; checking it first keeps the opt-in -
+                // no endpoint means no exporter, not one failing against the SDK's localhost:4317 default.
                 if (!string.IsNullOrWhiteSpace(otlpEndpoint))
                 {
                     tracing.AddOtlpExporter();

@@ -45,7 +45,7 @@ public sealed class GetTasksHandler(IApplicationDbContext context)
 
         var tasks = context.Tasks.AsNoTracking();
 
-        // Filter then order: ix_tasks_status_created_at serves exactly this shape with no sort step.
+        // Two indexes cover this: ix_tasks_status_created_at when a status is given, ix_tasks_created_at_id when it is not.
         if (query.Status is { } status)
         {
             tasks = tasks.Where(task => task.Status == status);

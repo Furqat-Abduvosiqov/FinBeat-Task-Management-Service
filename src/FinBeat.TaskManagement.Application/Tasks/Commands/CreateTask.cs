@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace FinBeat.TaskManagement.Application.Tasks.Commands;
 
 /// <summary>Asks for a new task.</summary>
-/// <param name="Title">The title. Required, and trimmed to at most <see cref="TaskTitle.MaxLength"/> characters.</param>
+/// <param name="Title">The title. Required, trimmed, and rejected if longer than <see cref="TaskTitle.MaxLength"/> characters.</param>
 /// <param name="Description">The description. Optional: null or whitespace means none.</param>
 public sealed record CreateTaskCommand(string? Title, string? Description);
 

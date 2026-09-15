@@ -29,16 +29,14 @@ public sealed class UnroutableEventDeliveryTests : IAsyncLifetime
         await using var provider = BuildProvider();
         var bus = provider.GetRequiredService<IBusControl>();
 
-        // No consumer is registered, so nothing declares a queue for TaskCreated. Before the alternate
-        // exchange this publish succeeded and the event was discarded by the broker without a word.
+        // No consumer is registered, so nothing declares a queue for TaskCreated - without the
+        // alternate exchange this publish would succeed and the broker would drop it silently.
         await bus.StartAsync(CancellationToken.None);
 
         try
         {
-            // The queue has to exist before the first publish, not because of it: this service always
-            // publishes through the transactional outbox, and the outbox send path declares only the
-            // exchange it is sending to. Deploying the publish topology at startup is what puts the
-            // alternate exchange and its queue on the broker in time to catch anything.
+            // Must exist before the first publish: the outbox send path only declares the exchange
+            // it targets, so DeployPublishTopology at startup is what puts this queue on the broker.
             (await UnroutableQueueExistsAsync()).ShouldBeTrue();
 
             await bus.Publish(new TaskCreated(Guid.NewGuid(), "Nobody is listening", "", "New", DateTimeOffset.UtcNow));

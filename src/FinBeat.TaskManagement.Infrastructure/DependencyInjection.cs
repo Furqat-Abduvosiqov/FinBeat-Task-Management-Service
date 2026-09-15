@@ -74,9 +74,9 @@ public static class DependencyInjection
                 // alternate exchange its argument names. Without it the diverted message is dropped too.
                 rabbit.DeployPublishTopology = true;
 
-                // The outbox guarantees the broker accepted the event, not that anyone was listening. A
-                // fanout exchange with nothing bound discards silently; the alternate exchange catches
-                // those instead. Driven off the assembly so a new contract cannot miss it.
+                // The outbox guarantees the broker accepted the event, not that anyone was listening - an
+                // unbound fanout exchange discards silently, and the alternate exchange catches those instead.
+                // Driven off the assembly so a new contract cannot miss it.
                 foreach (var integrationEvent in IntegrationEventTypes)
                 {
                     rabbit.Publish(integrationEvent, exchange => exchange.BindAlternateExchangeQueue(UnroutableName));

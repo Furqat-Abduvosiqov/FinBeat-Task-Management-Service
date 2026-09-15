@@ -1,7 +1,7 @@
 namespace FinBeat.TaskManagement.Domain.Tasks;
 
 /// <summary>Which status changes a task is allowed to make.</summary>
-/// <remarks>Separate from the aggregate so the whole matrix fits one parameterized test. Restoring lands in New.</remarks>
+/// <remarks>Separate from the aggregate so the whole matrix fits one parameterized test. Restoring lands in New rather than the earlier status, which would need a field the specification never asks for.</remarks>
 public static class TaskItemStatusRules
 {
     /// <summary>Whether a task may move from one status to another.</summary>

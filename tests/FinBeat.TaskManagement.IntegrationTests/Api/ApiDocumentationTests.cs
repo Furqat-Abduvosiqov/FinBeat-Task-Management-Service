@@ -33,9 +33,8 @@ public sealed class ApiDocumentationTests
     [Fact]
     public async Task Statuses_are_documented_as_names_the_enum_itself_explains()
     {
-        // Statuses now travel as names, so there is no generated legend to keep in step with the
-        // code: JsonStringEnumConverter makes the wire values self-explanatory, and Swashbuckle's
-        // own XML-comments support already puts the enum's <summary> on the schema for free.
+        // Statuses travel as names now, so there's no generated legend to keep in sync: the enum's
+        // own <summary> reaches the schema through Swashbuckle's XML-comments support.
         await using var app = await StartAsync();
 
         var document = await ReadDocumentAsync(app);
@@ -59,14 +58,12 @@ public sealed class ApiDocumentationTests
         query.GetProperty("schema").GetProperty("$ref").GetString()
             .ShouldBe("#/components/schemas/TaskItemStatus");
 
-        // The only description left on the schema is the enum's own <summary> - nothing appended,
-        // because there is no per-value meaning left to spell out.
+        // Nothing appended to the enum's own <summary> - no per-value meaning left to spell out.
         schemas.GetProperty(nameof(TaskItemStatus)).GetProperty("description").GetString()
             .ShouldBe("Where a task is in its lifecycle.");
 
-        // The endpoint still overrides the parameter's own description by hand (Swagger UI does not
-        // show a $ref target's description next to the field), so that much survives unrelated to
-        // the deleted legend apparatus.
+        // The endpoint still sets its own parameter description by hand: Swagger UI doesn't show a
+        // $ref target's description next to the field.
         query.GetProperty("description").GetString().ShouldNotBeNullOrWhiteSpace();
     }
 
@@ -80,9 +77,9 @@ public sealed class ApiDocumentationTests
     [Fact]
     public async Task The_version_the_document_states_is_one_the_bundled_Swagger_UI_reads()
     {
-        // The generator and the UI ship separately and can fall out of step, which once rendered a
-        // valid document as "does not specify a valid version field". So the UI's own version test is
-        // read out of the bundle it serves and applied to the document, rather than asserting a literal.
+        // The generator and the bundled UI ship separately and can drift, once rendering a valid
+        // document as "does not specify a valid version field" - so check against the UI's own
+        // version regex instead of asserting a literal.
         await using var app = await StartAsync();
 
         var version = (await ReadDocumentAsync(app)).GetProperty("openapi").GetString();
@@ -93,8 +90,8 @@ public sealed class ApiDocumentationTests
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
-        // Were swagger-ui to stop shipping that test in this shape, the assertion below would hold
-        // over nothing at all, so finding it is the first thing to establish.
+        // If swagger-ui stopped shipping that test in this shape, the assertion below would pass over
+        // nothing - so check that some tests were actually found first.
         version.ShouldNotBeNullOrWhiteSpace();
         tests.ShouldNotBeEmpty();
         tests.ShouldAllBe(test => Regex.IsMatch(version, test));

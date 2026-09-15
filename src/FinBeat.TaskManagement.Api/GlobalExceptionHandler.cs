@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.WebUtilities;
 
 namespace FinBeat.TaskManagement.Api;
 
-/// <summary>Turns any unhandled exception into a 500 carrying RFC 9457 problem details.</summary>
-/// <remarks>The body is the same for every exception: what went wrong belongs in the log. <c>traceId</c>, the handle that joins the two, is added by <c>ProblemDetailsOptions.CustomizeProblemDetails</c> for every problem response, not only this one.</remarks>
+/// <summary>Turns an unhandled exception into RFC 9457 problem details: the framework's own status for a request it could not read, 500 for anything else.</summary>
+/// <remarks>The body never names what actually broke - that belongs in the log. <c>CustomizeProblemDetails</c> adds the <c>traceId</c> that joins the two, on every problem response.</remarks>
 internal sealed class GlobalExceptionHandler(IProblemDetailsService problemDetailsService) : IExceptionHandler
 {
     /// <inheritdoc />

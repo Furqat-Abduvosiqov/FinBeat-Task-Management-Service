@@ -58,11 +58,8 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
     [InlineData(null)]
     public async Task A_request_without_a_title_is_rejected_before_the_domain_sees_it(string? title)
     {
-        // Also pins ValidationFilter<CreateTaskRequest> on POST /tasks: remove it from the route, or
-        // swap its generic argument for a type this route does not bind (so
-        // context.Arguments.OfType<T>() finds nothing and validation is silently skipped), and the
-        // blank title reaches TaskTitle.Create instead - a domain exception with no "errors" field
-        // and a different code, which fails this assertion rather than passing it by coincidence.
+        // Pins ValidationFilter<CreateTaskRequest> on POST /tasks: drop it and the blank title
+        // reaches TaskTitle.Create instead, failing with a different code and no "errors" field.
         var response = await _client.PostAsJsonAsync("/tasks", new { title, description = (string?)null });
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -127,11 +124,8 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task A_status_outside_the_enum_returns_400_rather_than_409()
     {
-        // A value nobody declared is a malformed request, not a state conflict - retry-on-409
-        // clients would loop on the latter. The converter runs with allowIntegerValues off, so a
-        // number never deserializes into the enum at all and the request is refused before any
-        // filter or handler sees it. Without that, 99 would reach TaskItemStatusRules.CanTransition,
-        // which treats an undefined value as no valid move and answers 409.
+        // 400, not 409: an undeclared value is a malformed request, and retry-on-409 clients would
+        // loop on a conflict. allowIntegerValues is off, so 99 never deserializes at all.
         var created = await CreateAsync("Undefined status");
 
         var response = await _client.PutAsJsonAsync($"/tasks/{Id(created)}/status", new { status = 99 });
@@ -145,11 +139,8 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
     [InlineData(null)]
     public async Task An_update_without_a_title_is_rejected_before_the_domain_sees_it(string? title)
     {
-        // Pins ValidationFilter<UpdateTaskDetailsRequest> on PUT /tasks/{id}: remove it, or point its
-        // generic argument at a type this route does not bind (so context.Arguments.OfType<T>()
-        // finds nothing and validation is silently skipped), and the blank title reaches
-        // TaskTitle.Create instead - a domain exception with no "errors" field and a different code,
-        // which fails this assertion rather than passing it by coincidence.
+        // Pins ValidationFilter<UpdateTaskDetailsRequest> on PUT /tasks/{id}: drop it and the blank
+        // title reaches TaskTitle.Create instead, failing with a different code and no "errors" field.
         var created = await CreateAsync("Rename me");
 
         var response = await _client.PutAsJsonAsync(

@@ -8,7 +8,7 @@ public interface IIntegrationEventPublisher
     /// <typeparam name="TEvent">The contract type, from <c>FinBeat.TaskManagement.Contracts</c>.</typeparam>
     /// <param name="integrationEvent">The event to publish.</param>
     /// <param name="cancellationToken">Cancels the publish.</param>
-    /// <returns>A task that completes once the event has been handed to the transport.</returns>
+    /// <returns>A task that completes once the event is recorded for delivery; with the outbox it is not sent until the transaction commits.</returns>
     Task PublishAsync<TEvent>(TEvent integrationEvent, CancellationToken cancellationToken = default)
         where TEvent : class;
 }

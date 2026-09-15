@@ -1,25 +1,17 @@
 using System.Runtime.CompilerServices;
 
-// Infrastructure declares this topology when publishing and Listener declares it again when binding
-// consumer queues; both need the literals below without Contracts' public surface growing to include
-// them - GetExportedTypes() on this assembly is how both sides discover which types are integration
-// events to publish, and a broker-topology type sitting in that list would get published as one.
+// Infrastructure publishes this topology and Listener binds queues from it - both need these
+// constants internally, without them becoming part of Contracts' public (and published) surface.
 [assembly: InternalsVisibleTo("FinBeat.TaskManagement.Infrastructure")]
 [assembly: InternalsVisibleTo("FinBeat.TaskManagement.Listener")]
 
 namespace FinBeat.TaskManagement.Contracts.Messaging;
 
-/// <summary>
-/// The broker names the publishing side (Infrastructure) and the consuming side (Listener) must
-/// declare identically. A mismatch here is not a compile error or a failing test - it is
-/// <c>PRECONDITION_FAILED - inequivalent arg 'alternate-exchange'</c> at broker-declare time, in
-/// whichever deployable did not change. Contracts is the only assembly both of them reference, so
-/// the names live here instead of as two hand-copied literals.
-/// </summary>
-/// <remarks>Plain constants only: Contracts has zero package and project references, so nothing here
-/// may depend on MassTransit or anything else that would give it one. Internal, not public: the
-/// event-publishing loops on both sides enumerate this assembly's exported types, so a public type
-/// here would be mistaken for an integration event.</remarks>
+/// <summary>Broker names Infrastructure (publishing) and Listener (consuming) must declare identically.</summary>
+/// <remarks>A mismatch is caught by neither the compiler nor a test - it surfaces as <c>PRECONDITION_FAILED
+/// - inequivalent arg 'alternate-exchange'</c> at broker-declare time, so the names live in the one
+/// assembly both sides reference. Internal because both sides publish every type this assembly exports, and plain
+/// constants only because Contracts carries zero package or project references.</remarks>
 internal static class BrokerTopology
 {
     /// <summary>The configuration section both sides bind their RabbitMQ transport options from.</summary>

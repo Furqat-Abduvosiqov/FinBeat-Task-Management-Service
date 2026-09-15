@@ -9,7 +9,7 @@ using Serilog;
 namespace FinBeat.TaskManagement.Listener;
 
 /// <summary>Composes the listener host, so that Program.cs stays a readable outline of startup.</summary>
-/// <remarks>A second copy of the API's bootstrap on purpose: this is a separate deployable whose only permitted reference is Contracts, and Contracts is dependency-free so it cannot hold hosting code.</remarks>
+/// <remarks>A deliberate second copy of the API's bootstrap: Listener may reference only Contracts, and Contracts is dependency-free, so it can't hold hosting code.</remarks>
 internal static class Bootstrap
 {
     private const string OpenTelemetrySection = "OpenTelemetry";
@@ -40,9 +40,8 @@ internal static class Bootstrap
 
     private static void AddMessaging(this HostApplicationBuilder builder)
     {
-        // Both broker names come from Contracts.Messaging.BrokerTopology: the API declares the same
-        // section and the same alternate exchange from that one place, so a rename cannot go stale
-        // on just one side and surface as PRECONDITION_FAILED at broker-declare time.
+        // Both names come from Contracts.Messaging.BrokerTopology, same as the API, so a rename can't
+        // go stale on just one side and surface as PRECONDITION_FAILED at broker-declare time.
         builder.Services.AddOptions<RabbitMqTransportOptions>()
             .Bind(builder.Configuration.GetSection(BrokerTopology.RabbitMqSectionName));
 
@@ -59,6 +58,8 @@ internal static class Bootstrap
 
             bus.UsingRabbitMq((context, rabbit) =>
             {
+                // Declared here too, though the listener never publishes: the alternate exchange has
+                // to exist before the first publish, or a diverted message is dropped like the original.
                 rabbit.DeployPublishTopology = true;
 
                 foreach (var integrationEvent in typeof(TaskCreated).Assembly.GetExportedTypes())

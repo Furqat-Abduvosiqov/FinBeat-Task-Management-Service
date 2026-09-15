@@ -42,7 +42,7 @@ public sealed class TaskItem : AggregateRoot
     /// <summary>When the task last changed, in UTC.</summary>
     public DateTimeOffset UpdatedAt { get; private set; }
 
-    /// <summary>Creates a task, ready to be added to a repository.</summary>
+    /// <summary>Creates a task, ready to be added to the context.</summary>
     /// <exception cref="ArgumentNullException">Any argument is null.</exception>
     public static TaskItem Create(TaskTitle title, TaskDescription description, TimeProvider clock)
     {
@@ -106,7 +106,7 @@ public sealed class TaskItem : AggregateRoot
     }
 
     /// <summary>Records that the task is being deleted. Allowed from any status.</summary>
-    /// <remarks>Records the intent only; the repository removes the row. Use Archived to keep a task.</remarks>
+    /// <remarks>Records the intent only; the handler removes the row. Use Archived to keep a task.</remarks>
     /// <exception cref="ArgumentNullException"><paramref name="clock"/> is null.</exception>
     public void Delete(TimeProvider clock)
     {

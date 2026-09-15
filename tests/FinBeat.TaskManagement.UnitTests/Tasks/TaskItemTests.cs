@@ -17,10 +17,9 @@ public sealed class TaskItemTests
     [Fact]
     public void Create_sets_title_description_status_and_matching_timestamps()
     {
-        // AutoAdvanceAmount makes every read of the clock return a different instant. Without it a
-        // FakeTimeProvider pinned at a fixed time returns the same value from every read, so
-        // rewriting Create as two separate GetUtcNow() calls - the exact regression the
-        // "one single clock read" requirement exists to prevent - would leave this test green.
+        // AutoAdvanceAmount makes every clock read return a different instant, so splitting Create
+        // into two GetUtcNow() calls - the regression the single-read requirement guards against -
+        // would fail this rather than pass it by coincidence.
         var start = DateTimeOffset.UnixEpoch;
         var clock = new FakeTimeProvider(start) { AutoAdvanceAmount = TimeSpan.FromSeconds(1) };
 
@@ -76,9 +75,8 @@ public sealed class TaskItemTests
         var newTitle = TaskTitle.Create("Buy oat milk");
         var newDescription = TaskDescription.Create("Unsweetened");
 
-        // Same guard as Create. mutatedAt is the instant the mutation must stamp; AutoAdvanceAmount
-        // makes any SECOND read of the clock return a different one, so reading it again inside
-        // UpdateDetails can no longer leave UpdatedAt and OccurredOnUtc agreeing by accident.
+        // AutoAdvanceAmount is switched on only now, so a second clock read inside UpdateDetails would
+        // drift OccurredOnUtc off UpdatedAt instead of letting the two agree by accident.
         var mutatedAt = clock.GetUtcNow();
         clock.AutoAdvanceAmount = TimeSpan.FromSeconds(1);
 
@@ -110,9 +108,8 @@ public sealed class TaskItemTests
         task.DomainEvents.ShouldBeEmpty();
     }
 
-    // One field at a time, because the guard is a conjunction. Rewritten as
-    // "Title == title || Description == description" it would turn every single-field update into a
-    // no-op - and a test that changes both fields, or neither, passes either way.
+    // One field at a time: the guard is a conjunction, and flipping it to OR would no-op every
+    // single-field update while a both-or-neither test still passed.
     [Fact]
     public void UpdateDetails_with_only_the_title_changed_assigns_it_and_raises_an_event()
     {
@@ -167,7 +164,7 @@ public sealed class TaskItemTests
 
         clock.Advance(TimeSpan.FromMinutes(30));
 
-        // Same guard as Create: AutoAdvanceAmount makes a second read of the clock detectable.
+        // Same trick as UpdateDetails: a second clock read after this point would be detectable.
         var mutatedAt = clock.GetUtcNow();
         clock.AutoAdvanceAmount = TimeSpan.FromSeconds(1);
 
@@ -275,8 +272,7 @@ public sealed class TaskItemTests
         clock.Advance(TimeSpan.FromMinutes(5));
         task.Delete(clock);
 
-        // Delete records intent only - the row is removed by whoever commits, so there is nothing on
-        // the aggregate for it to mutate. Pins that against a future edit adding an UpdatedAt bump.
+        // Pins against a future edit adding an UpdatedAt bump: Delete records intent only.
         task.Status.ShouldBe(statusBefore);
         task.UpdatedAt.ShouldBe(updatedAtBefore);
     }

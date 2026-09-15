@@ -3,7 +3,7 @@ using FinBeat.TaskManagement.Domain.Tasks.Exceptions;
 namespace FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
 
 /// <summary>A task's optional description, at most <see cref="MaxLength"/> characters.</summary>
-/// <remarks>Absence is <see cref="None"/>, not null, so the aggregate never needs a null check.</remarks>
+/// <remarks>Absence is <see cref="None"/>, not null, so the aggregate's <c>Description</c> never needs a null check.</remarks>
 public sealed record TaskDescription
 {
     /// <summary>The longest a description may be, after trimming.</summary>
