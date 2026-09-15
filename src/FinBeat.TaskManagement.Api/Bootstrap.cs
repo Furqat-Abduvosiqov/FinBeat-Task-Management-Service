@@ -1,3 +1,5 @@
+using FinBeat.TaskManagement.Application.Tasks.Commands;
+using FinBeat.TaskManagement.Application.Tasks.Queries;
 using FinBeat.TaskManagement.Infrastructure;
 using Npgsql;
 using OpenTelemetry.Resources;
@@ -40,8 +42,23 @@ internal static class Bootstrap
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
         builder.Services.AddInfrastructure(builder.Configuration);
+        builder.Services.AddUseCases();
 
         return builder;
+    }
+
+    // The use cases are registered from the host rather than from Application, which may reference
+    // EF Core and nothing else - IServiceCollection included.
+    private static void AddUseCases(this IServiceCollection services)
+    {
+        services.AddSingleton(TimeProvider.System);
+
+        services.AddScoped<CreateTaskHandler>();
+        services.AddScoped<UpdateTaskDetailsHandler>();
+        services.AddScoped<ChangeTaskStatusHandler>();
+        services.AddScoped<DeleteTaskHandler>();
+        services.AddScoped<GetTaskByIdHandler>();
+        services.AddScoped<GetTasksHandler>();
     }
 
     /// <summary>Builds the request pipeline.</summary>

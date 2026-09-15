@@ -21,6 +21,10 @@ public sealed class PostgresFixture : IAsyncLifetime
     public NpgsqlDataSource DataSource =>
         _dataSource ?? throw new InvalidOperationException($"{nameof(InitializeAsync)} has not run yet.");
 
+    /// <summary>The migrated container's connection string, for tests that build their own container from <c>AddInfrastructure</c>.</summary>
+    public string ConnectionString =>
+        _connectionString ?? throw new InvalidOperationException($"{nameof(InitializeAsync)} has not run yet.");
+
     /// <summary>Starts the container and applies the migrations.</summary>
     public async Task InitializeAsync()
     {
