@@ -1,0 +1,106 @@
+using System.Text.Json;
+using FinBeat.TaskManagement.Api;
+using FinBeat.TaskManagement.Domain.Tasks;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Shouldly;
+
+namespace FinBeat.TaskManagement.IntegrationTests.Api;
+
+/// <summary>Fetches the generated OpenAPI document from the composed host.</summary>
+/// <remarks>Reaches no database: generating the document needs the routes and the schemas, not a connection.</remarks>
+public sealed class ApiDocumentationTests
+{
+    [Fact]
+    public async Task The_document_describes_every_task_endpoint_with_the_statuses_it_answers()
+    {
+        await using var app = await StartAsync();
+
+        var document = await ReadDocumentAsync(app);
+        var paths = document.GetProperty("paths");
+
+        document.GetProperty("info").GetProperty("title").GetString().ShouldBe("FinBeat Task Management");
+
+        ShouldDescribe(paths, "/tasks", "post", "CreateTask", "201", "400");
+        ShouldDescribe(paths, "/tasks", "get", "GetTasks", "200", "400");
+        ShouldDescribe(paths, "/tasks/{taskId}", "get", "GetTaskById", "200", "404");
+        ShouldDescribe(paths, "/tasks/{taskId}", "put", "UpdateTaskDetails", "200", "400", "404");
+        ShouldDescribe(paths, "/tasks/{taskId}", "delete", "DeleteTask", "204", "404");
+        ShouldDescribe(paths, "/tasks/{taskId}/status", "put", "ChangeTaskStatus", "200", "400", "404", "409");
+    }
+
+    [Fact]
+    public async Task Statuses_are_documented_as_names_on_both_the_request_and_the_query()
+    {
+        // Swashbuckle infers schemas with its own serializer, so without the explicit mapping these
+        // would read as integers while the wire carries names.
+        await using var app = await StartAsync();
+
+        var document = await ReadDocumentAsync(app);
+        var expected = Enum.GetNames<TaskItemStatus>();
+
+        var body = document.GetProperty("components").GetProperty("schemas")
+            .GetProperty("ChangeTaskStatusRequest").GetProperty("properties").GetProperty("status");
+
+        var query = document.GetProperty("paths").GetProperty("/tasks").GetProperty("get")
+            .GetProperty("parameters").EnumerateArray()
+            .Single(parameter => parameter.GetProperty("name").GetString() == "status");
+
+        Names(body).ShouldBe(expected);
+        Names(query.GetProperty("schema")).ShouldBe(expected);
+        query.GetProperty("description").GetString().ShouldNotBeNullOrWhiteSpace();
+    }
+
+    private static string[] Names(JsonElement schema)
+    {
+        schema.GetProperty("type").GetString().ShouldBe("string");
+
+        return schema.GetProperty("enum").EnumerateArray().Select(value => value.GetString()!).ToArray();
+    }
+
+    private static void ShouldDescribe(
+        JsonElement paths,
+        string path,
+        string method,
+        string operationId,
+        params string[] responses)
+    {
+        var operation = paths.GetProperty(path).GetProperty(method);
+
+        operation.GetProperty("operationId").GetString().ShouldBe(operationId);
+        operation.GetProperty("summary").GetString().ShouldNotBeNullOrWhiteSpace();
+        operation.GetProperty("responses").EnumerateObject()
+            .Select(response => response.Name).Order().ToArray()
+            .ShouldBe(responses);
+    }
+
+    private static async Task<JsonElement> ReadDocumentAsync(WebApplication app) =>
+        JsonDocument.Parse(await app.GetTestClient().GetStringAsync("/swagger/v1/swagger.json")).RootElement;
+
+    private static async Task<WebApplication> StartAsync()
+    {
+        // Development, because that is the only environment the pipeline serves Swagger in.
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Development,
+        });
+
+        builder.WebHost.UseTestServer();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [TestConfiguration.ConnectionStringKey] = TestConfiguration.UnusedConnectionString,
+        });
+
+        builder.AddApiHost();
+
+        var app = builder.Build();
+        app.UseApiPipeline();
+
+        await app.StartAsync();
+
+        return app;
+    }
+}

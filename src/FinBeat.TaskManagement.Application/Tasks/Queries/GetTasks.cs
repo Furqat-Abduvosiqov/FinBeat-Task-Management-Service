@@ -24,6 +24,11 @@ public sealed class GetTasksHandler(IApplicationDbContext context)
     {
         ArgumentNullException.ThrowIfNull(query);
 
+        if (query.Status is { } requested && !Enum.IsDefined(requested))
+        {
+            return Result.Failure<IReadOnlyList<TaskResponse>>(TaskErrors.UnknownStatus(requested));
+        }
+
         var tasks = context.Tasks.AsNoTracking();
 
         // Filter then order: ix_tasks_status_created_at serves exactly this shape with no sort step.

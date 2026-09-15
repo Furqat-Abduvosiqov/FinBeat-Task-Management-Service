@@ -30,6 +30,11 @@ public sealed class ChangeTaskStatusHandler(
     {
         ArgumentNullException.ThrowIfNull(command);
 
+        if (!Enum.IsDefined(command.Status))
+        {
+            return Result.Failure<TaskResponse>(TaskErrors.UnknownStatus(command.Status));
+        }
+
         var task = await context.Tasks.FindByIdAsync(command.TaskId, cancellationToken);
 
         if (task is null)

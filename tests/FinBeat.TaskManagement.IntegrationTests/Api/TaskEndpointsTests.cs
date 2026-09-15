@@ -1,0 +1,209 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using FinBeat.TaskManagement.Api;
+using FinBeat.TaskManagement.Domain.Tasks;
+using FinBeat.TaskManagement.IntegrationTests.Persistence;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Shouldly;
+
+namespace FinBeat.TaskManagement.IntegrationTests.Api;
+
+/// <summary>Drives the endpoints through the composed host against a real PostgreSQL.</summary>
+/// <remarks>An in-memory server, so no port is bound. No broker runs either: the outbox keeps every publish inside the database.</remarks>
+[Collection(nameof(PostgresCollection))]
+[Trait("Category", "RequiresDocker")]
+public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
+{
+    private WebApplication _app = null!;
+    private HttpClient _client = null!;
+
+    public async Task InitializeAsync()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Production,
+        });
+
+        builder.WebHost.UseTestServer();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [TestConfiguration.ConnectionStringKey] = fixture.ConnectionString,
+        });
+
+        builder.AddApiHost();
+
+        _app = builder.Build();
+        _app.UseApiPipeline();
+
+        await _app.StartAsync();
+
+        _client = _app.GetTestClient();
+    }
+
+    public async Task DisposeAsync() => await _app.DisposeAsync();
+
+    [Fact]
+    public async Task Creating_a_task_returns_201_with_a_location_and_the_created_task()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/tasks",
+            new { title = "  Renew passport  ", description = "Before the trip" });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var created = await ReadJsonAsync(response);
+        created.GetProperty("title").GetString().ShouldBe("Renew passport");
+        created.GetProperty("status").GetString().ShouldBe(nameof(TaskItemStatus.New));
+
+        // The Location header has to lead somewhere, which is what CreatedAtRoute is for.
+        response.Headers.Location.ShouldNotBeNull();
+
+        var followed = await _client.GetAsync(response.Headers.Location);
+        followed.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await ReadJsonAsync(followed)).GetProperty("id").GetString().ShouldBe(Id(created).ToString());
+    }
+
+    [Fact]
+    public async Task Creating_a_task_without_a_title_returns_400_carrying_the_error_code()
+    {
+        var response = await _client.PostAsJsonAsync("/tasks", new { title = "   ", description = (string?)null });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+
+        var problem = await ReadJsonAsync(response);
+        problem.GetProperty("code").GetString().ShouldBe("task.title.invalid");
+    }
+
+    [Fact]
+    public async Task A_status_read_from_a_response_can_be_sent_straight_back()
+    {
+        // Names in both directions. Bound as numbers, the spelling a client just read would not parse.
+        var created = await CreateAsync("Round-trip the status");
+        created.GetProperty("status").GetString().ShouldBe(nameof(TaskItemStatus.New));
+
+        var response = await _client.PutAsJsonAsync(
+            $"/tasks/{Id(created)}/status",
+            new { status = nameof(TaskItemStatus.InProgress) });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await ReadJsonAsync(response)).GetProperty("status").GetString()
+            .ShouldBe(nameof(TaskItemStatus.InProgress));
+    }
+
+    [Fact]
+    public async Task A_status_move_the_rules_forbid_returns_409()
+    {
+        var created = await CreateAsync("Archive then complete");
+
+        var archived = await _client.PutAsJsonAsync(
+            $"/tasks/{Id(created)}/status",
+            new { status = nameof(TaskItemStatus.Archived) });
+
+        archived.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var response = await _client.PutAsJsonAsync(
+            $"/tasks/{Id(created)}/status",
+            new { status = nameof(TaskItemStatus.Completed) });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        (await ReadJsonAsync(response)).GetProperty("code").GetString()
+            .ShouldBe("task.status.invalid-transition");
+    }
+
+    [Fact]
+    public async Task A_status_outside_the_enum_returns_400_rather_than_409()
+    {
+        var created = await CreateAsync("Undefined status");
+
+        var response = await _client.PutAsJsonAsync($"/tasks/{Id(created)}/status", new { status = 99 });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await ReadJsonAsync(response)).GetProperty("code").GetString().ShouldBe("task.status.unknown");
+    }
+
+    [Fact]
+    public async Task Updating_a_task_returns_the_new_details()
+    {
+        var created = await CreateAsync("Renew passport");
+
+        var response = await _client.PutAsJsonAsync(
+            $"/tasks/{Id(created)}",
+            new { title = "Renew passport urgently", description = "The office closes in July" });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var updated = await ReadJsonAsync(response);
+        updated.GetProperty("title").GetString().ShouldBe("Renew passport urgently");
+        updated.GetProperty("description").GetString().ShouldBe("The office closes in July");
+    }
+
+    [Fact]
+    public async Task Deleting_a_task_returns_204_and_the_task_is_then_gone()
+    {
+        var created = await CreateAsync("Cancel the subscription");
+
+        var deleted = await _client.DeleteAsync($"/tasks/{Id(created)}");
+        deleted.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        (await _client.GetAsync($"/tasks/{Id(created)}")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Theory]
+    [InlineData("GET")]
+    [InlineData("DELETE")]
+    public async Task An_unknown_task_returns_404_carrying_the_error_code(string method)
+    {
+        var request = new HttpRequestMessage(new HttpMethod(method), $"/tasks/{Guid.NewGuid()}");
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await ReadJsonAsync(response)).GetProperty("code").GetString().ShouldBe("task.not-found");
+    }
+
+    [Fact]
+    public async Task A_body_that_cannot_be_read_returns_400_rather_than_500()
+    {
+        var response = await _client.PostAsync(
+            "/tasks",
+            new StringContent("{ not json", Encoding.UTF8, "application/json"));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
+    }
+
+    [Fact]
+    public async Task Listing_by_status_returns_only_that_status()
+    {
+        var created = await CreateAsync("Stays new");
+
+        var response = await _client.GetAsync($"/tasks?status={nameof(TaskItemStatus.Archived)}");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var tasks = (await ReadJsonAsync(response)).EnumerateArray().ToArray();
+        tasks.ShouldAllBe(task => task.GetProperty("status").GetString() == nameof(TaskItemStatus.Archived));
+        tasks.ShouldNotContain(task => task.GetProperty("id").GetString() == Id(created).ToString());
+    }
+
+    private static Guid Id(JsonElement task) => task.GetProperty("id").GetGuid();
+
+    private static async Task<JsonElement> ReadJsonAsync(HttpResponseMessage response) =>
+        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+
+    private async Task<JsonElement> CreateAsync(string title)
+    {
+        var response = await _client.PostAsJsonAsync("/tasks", new { title, description = (string?)null });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        return await ReadJsonAsync(response);
+    }
+}

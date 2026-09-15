@@ -1,10 +1,18 @@
+using System.Reflection;
+using System.Text.Json.Serialization;
+using FinBeat.TaskManagement.Api.Endpoints;
+using FinBeat.TaskManagement.Application.Tasks;
 using FinBeat.TaskManagement.Application.Tasks.Commands;
 using FinBeat.TaskManagement.Application.Tasks.Queries;
+using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Infrastructure;
+using Microsoft.OpenApi.Any;
+using Microsoft.OpenApi.Models;
 using Npgsql;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace FinBeat.TaskManagement.Api;
 
@@ -39,12 +47,52 @@ internal static class Bootstrap
         builder.Services.AddProblemDetails();
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
+        // Statuses travel as names in both directions. Without this they bind as numbers on the way
+        // in while responses and events keep emitting names, so a client cannot echo back what it read.
+        builder.Services.ConfigureHttpJsonOptions(options =>
+            options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
+        builder.Services.AddApiDocumentation();
         builder.Services.AddInfrastructure(builder.Configuration);
         builder.Services.AddUseCases();
 
         return builder;
+    }
+
+    private static void AddApiDocumentation(this IServiceCollection services) =>
+        services.AddSwaggerGen(options =>
+        {
+            options.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "FinBeat Task Management",
+                Version = "v1",
+                Description =
+                    "Create, read, update and delete tasks. Every change is published as an integration "
+                    + "event through a transactional outbox, so an event is never sent for a change that "
+                    + "rolled back. Failures come back as RFC 9457 problem details carrying a stable "
+                    + "`code` extension, which is the part worth matching on.",
+            });
+
+            // The request bodies. A query parameter needs stating at the endpoint instead - see ListAsync.
+            options.MapType<TaskItemStatus>(OpenApiConventions.StatusSchema);
+
+            options.OperationFilter<StatusParameterFilter>();
+            options.SupportNonNullableReferenceTypes();
+
+            // The XML from this assembly and from Application, which owns TaskResponse.
+            IncludeXmlComments(options, Assembly.GetExecutingAssembly());
+            IncludeXmlComments(options, typeof(TaskResponse).Assembly);
+        });
+
+    private static void IncludeXmlComments(SwaggerGenOptions options, Assembly assembly)
+    {
+        var documentation = Path.Combine(AppContext.BaseDirectory, $"{assembly.GetName().Name}.xml");
+
+        if (File.Exists(documentation))
+        {
+            options.IncludeXmlComments(documentation);
+        }
     }
 
     // The use cases are registered from the host rather than from Application, which may reference
@@ -74,6 +122,7 @@ internal static class Bootstrap
         }
 
         app.UseHttpsRedirection();
+        app.MapTaskEndpoints();
 
         return app;
     }
