@@ -27,13 +27,15 @@ the API, which is why it references `Contracts` and nothing else.
 
 ## Running it
 
-### 1. Start PostgreSQL and RabbitMQ
+### 1. Start PostgreSQL, RabbitMQ and Jaeger
 
 ```bash
 docker run -d --name finbeat-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=finbeat_taskmanagement \
   -p 5432:5432 postgres:16-alpine
 
 docker run -d --name finbeat-rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management-alpine
+
+docker run -d --name finbeat-jaeger -p 16686:16686 -p 4317:4317 -p 4318:4318 jaegertracing/jaeger:2.21.0
 ```
 
 ### 2. Apply the migrations
@@ -85,6 +87,31 @@ with `PRECONDITION_FAILED - inequivalent arg 'alternate-exchange'`; the event st
 retries. Delete the four `FinBeat.TaskManagement.Contracts.Tasks:*` exchanges and it recovers on the
 next attempt.
 
+### Tracing
+
+Both hosts export OpenTelemetry traces over OTLP, and `appsettings.Development.json` points them at
+the Jaeger container above — a local run is traced with no further setup. Leave `OtlpEndpoint` empty
+and nothing is exported at all, rather than every span failing against a collector that is not there.
+
+Open http://localhost:16686 and pick `FinBeat.TaskManagement.Api`. One request spans both services:
+
+```
+PUT /tasks/{id:guid}/status       FinBeat.TaskManagement.Api
+  finbeat_taskmanagement          Npgsql, once per statement
+  outbox send                     the publish, inside the transaction
+  outbox process                  delivery to the broker, after the commit
+  TaskStatusChanged send
+  task-status-changed receive     FinBeat.TaskManagement.Listener
+  task-status-changed process
+```
+
+Trace context survives both the outbox and the broker, so what the listener does is joined to the
+request that caused it instead of surfacing as an unrelated trace. The API traces ASP.NET Core,
+HttpClient, Npgsql and MassTransit; the listener owns no database, so it traces MassTransit alone.
+
+Jaeger v2 serves the UI on 16686 and speaks OTLP on 4317 (gRPC, what the exporter defaults to) and
+4318 (HTTP). Its query API is `/api/v3/...`; the v1 `/api/services` path is gone.
+
 ## Configuration
 
 Every setting can be supplied as an environment variable, with `__` for nesting.
@@ -96,7 +123,7 @@ Every setting can be supplied as an environment variable, with `__` for nesting.
 | `RabbitMq:Port` | `RabbitMq__Port` | `5672` |
 | `RabbitMq:VHost` | `RabbitMq__VHost` | `/` |
 | `RabbitMq:User` / `RabbitMq:Pass` | `RabbitMq__User` / `RabbitMq__Pass` | `guest` / `guest` |
-| `OpenTelemetry:OtlpEndpoint` | `OTEL_EXPORTER_OTLP_ENDPOINT` | unset — tracing is exported only when set |
+| `OpenTelemetry:OtlpEndpoint` | `OTEL_EXPORTER_OTLP_ENDPOINT` | unset outside Development, where it points at Jaeger; tracing is exported only when set |
 
 The connection string is validated at startup, so a missing one fails immediately and names the key
 rather than surfacing as a null reference on the first query.
