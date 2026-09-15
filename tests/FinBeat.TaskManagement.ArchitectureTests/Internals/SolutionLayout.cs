@@ -5,6 +5,13 @@ namespace FinBeat.TaskManagement.ArchitectureTests.Internals;
 // Reads what the .csproj files declare. Worth doing separately from the IL because an unused
 // reference leaves no trace in the compiled output - the compiler just drops it.
 //
+// Scope, stated plainly: this reads the raw XML of one file. It does not evaluate the project, so it
+// cannot see a reference introduced by an imported .props or .targets, one behind a Condition, or one
+// the SDK supplies implicitly. That is deliberate rather than an oversight - MSBuild evaluation in a
+// test process needs MSBuildLocator and a resolved toolset, which is a large amount of machinery for
+// a rule about declarations. What actually gets used is covered from the other side, by the compiled
+// assembly rules in LayerPurityTests.
+//
 // Projects resolve by convention, <root>/src/<name>/<name>.csproj. Searching the tree instead breaks
 // as soon as a second checkout sits inside the repo, which is what a worktree under the root is:
 // every project name matches twice.

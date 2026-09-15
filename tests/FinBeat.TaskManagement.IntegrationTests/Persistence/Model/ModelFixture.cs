@@ -21,14 +21,17 @@ public sealed class ModelFixture : IDisposable
     {
         var services = new ServiceCollection();
         services.AddInfrastructure(BuildConfiguration(ConnectionString));
+        
         Provider = services.BuildServiceProvider();
 
         using var scope = Provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         Model = context.Model;
+        
         TaskEntityType = Model.FindEntityType(typeof(TaskItem))
             ?? throw new InvalidOperationException($"{nameof(TaskItem)} is not part of the model.");
+        
         TaskTable = StoreObjectIdentifier.Create(TaskEntityType, StoreObjectType.Table)
             ?? throw new InvalidOperationException($"{nameof(TaskItem)} is not mapped to a table.");
     }
@@ -63,7 +66,7 @@ public sealed class ModelFixture : IDisposable
             .Build();
 
     /// <summary>Builds an <see cref="ApplicationDbContext"/> the way <c>dotnet ef</c> does — from a bare connection string rather than through DI. The caller owns disposal.</summary>
-    /// <remarks>No naming convention applied here on purpose: <c>OnConfiguring</c> applies it, which is exactly what the parity test confirms.</remarks>
+    /// <remarks>No naming convention applied here on purpose: <c>ApplicationDbContext.OnConfiguring</c> applies it.</remarks>
     public static ApplicationDbContext CreateDesignTimeContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>();

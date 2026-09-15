@@ -78,6 +78,23 @@ internal static class ArchitectureModel
             { Application, ["Microsoft.EntityFrameworkCore"] }
         };
 
+    // The same policy, enforced against the compiled assembly instead of the project file, because the
+    // two catch different things. A PackageReference says what was declared; this says what was used -
+    // including an assembly that arrived transitively through an approved package, and one the SDK
+    // supplied with no XML to read at all. Without this, Application could take a dependency on
+    // anything EF Core happens to drag in, or switch to the Web SDK and use ASP.NET Core, and the
+    // declaration rule would still pass.
+    //
+    // Assembly names rather than package ids: one package can ship several assemblies, and the
+    // mapping is not derivable from the id.
+    internal static readonly IReadOnlyDictionary<string, string[]> AllowedExternalAssemblies =
+        new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            { Domain, [] },
+            { Contracts, [] },
+            { Application, ["Microsoft.EntityFrameworkCore", "Microsoft.EntityFrameworkCore.Abstractions"] }
+        };
+
     internal static string[] ForbiddenFor(string layer)
     {
         var allowed = AllowedReferences(layer);
