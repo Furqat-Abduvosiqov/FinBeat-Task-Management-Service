@@ -6,10 +6,7 @@ namespace FinBeat.TaskManagement.Contracts.Tasks;
 /// <param name="Description">The task description, empty when there is none.</param>
 /// <param name="Status">The status name, for example <c>New</c>.</param>
 /// <param name="OccurredOnUtc">When the change happened, in UTC.</param>
-/// <remarks>
-/// Primitives only, and deliberately not the domain event. Domain events carry value objects with
-/// private constructors: they serialize, but nothing can deserialize them back.
-/// </remarks>
+/// <remarks>Primitives only: domain events carry value objects that cannot be deserialized back.</remarks>
 public sealed record TaskCreated(
     Guid TaskId,
     string Title,

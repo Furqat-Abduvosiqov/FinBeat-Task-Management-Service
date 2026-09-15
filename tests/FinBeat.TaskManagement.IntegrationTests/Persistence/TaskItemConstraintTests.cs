@@ -35,14 +35,9 @@ public sealed class TaskItemConstraintTests(PostgresFixture fixture)
         exception.ConstraintName.ShouldBe("ck_tasks_status");
     }
 
-    // Bypasses EF and the domain entirely: the point is to prove PostgreSQL enforces this itself,
-    // not just EF's model facets.
-    //
-    // Note the column and TaskTitle do not measure length the same way. string.Length counts UTF-16
-    // code units; varchar(200) counts characters, and a non-BMP character is two code units but one
-    // character. So the domain is always at least as strict as the column, never the other way round:
-    // nothing TaskTitle accepts can be truncated on insert. The reverse is possible - 101 emoji are
-    // rejected by TaskTitle but would fit the column - which is a domain question, not a storage one.
+    // Bypasses EF and the domain: the point is that PostgreSQL enforces this itself. Note the two do
+    // not measure length identically - string.Length counts UTF-16 units, varchar(200) counts
+    // characters - so the domain is always at least as strict as the column, never the reverse.
     private NpgsqlCommand Insert(string title, int status)
     {
         var command = fixture.DataSource.CreateCommand("""

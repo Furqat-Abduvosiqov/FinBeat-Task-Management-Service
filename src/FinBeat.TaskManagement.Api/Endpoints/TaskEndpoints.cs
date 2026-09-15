@@ -15,11 +15,7 @@ internal static class TaskEndpoints
     private const string GetTaskByIdRoute = "GetTaskById";
 
     /// <summary>Maps every task endpoint under <c>/tasks</c>.</summary>
-    /// <remarks>
-    /// Each handler returns a <c>Results&lt;,&gt;</c> union, so the successful responses are read off
-    /// the signature and cannot drift from what the code returns. Only the failures are declared,
-    /// because a problem result describes itself as a 500 whatever status it actually carries.
-    /// </remarks>
+    /// <remarks>Successful responses are read off the Results union; only failures are declared.</remarks>
     internal static IEndpointRouteBuilder MapTaskEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var tasks = endpoints.MapGroup("/tasks")

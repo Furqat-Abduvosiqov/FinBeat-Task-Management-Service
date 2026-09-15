@@ -6,11 +6,7 @@ using FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
 namespace FinBeat.TaskManagement.Domain.Tasks;
 
 /// <summary>A task a user tracks, from creation through to completion, archival or deletion.</summary>
-/// <remarks>
-/// Note for the Infrastructure layer: whatever drains <see cref="AggregateRoot{TId}.DomainEvents"/>
-/// has to read the change tracker <em>before</em> the save completes. EF detaches a deleted entity
-/// afterwards, so a later read loses its deletion event and the listener never hears about it.
-/// </remarks>
+/// <remarks>Drain DomainEvents before the save completes: EF detaches a deleted entity afterwards.</remarks>
 public sealed class TaskItem : AggregateRoot<TaskItemId>
 {
     /// <summary>Reserved for EF Core, which sets the properties by reflection afterwards.</summary>
@@ -82,10 +78,7 @@ public sealed class TaskItem : AggregateRoot<TaskItemId>
     }
 
     /// <summary>Moves the task to another status. Archiving and restoring go through here too.</summary>
-    /// <remarks>
-    /// Setting the status it already has does nothing, which keeps the call idempotent and stops
-    /// the listener logging changes that never happened.
-    /// </remarks>
+    /// <remarks>Setting the status it already has does nothing, so the call stays idempotent.</remarks>
     /// <exception cref="InvalidTaskStatusTransitionException">The move is not allowed.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="clock"/> is null.</exception>
     public void ChangeStatus(TaskItemStatus newStatus, TimeProvider clock)
@@ -110,11 +103,7 @@ public sealed class TaskItem : AggregateRoot<TaskItemId>
     }
 
     /// <summary>Records that the task is being deleted. Allowed from any status.</summary>
-    /// <remarks>
-    /// Only records the intent - the repository removes the row. Nothing is flagged on the
-    /// aggregate because deletion here is real; <see cref="TaskItemStatus.Archived"/> is what you
-    /// use to keep a task instead.
-    /// </remarks>
+    /// <remarks>Records the intent only; the repository removes the row. Use Archived to keep a task.</remarks>
     /// <exception cref="ArgumentNullException"><paramref name="clock"/> is null.</exception>
     public void Delete(TimeProvider clock)
     {

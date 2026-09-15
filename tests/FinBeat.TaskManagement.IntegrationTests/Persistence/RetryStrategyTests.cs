@@ -6,10 +6,7 @@ using Shouldly;
 namespace FinBeat.TaskManagement.IntegrationTests.Persistence;
 
 /// <summary>Proves the context a host resolves retries the errors a restarted server raises.</summary>
-/// <remarks>
-/// Reaches no database: building the options and asking for the execution strategy opens no
-/// connection, so this needs neither Docker nor the fixture.
-/// </remarks>
+/// <remarks>Opens no connection, so this needs neither Docker nor the fixture.</remarks>
 public sealed class RetryStrategyTests
 {
     [Fact]

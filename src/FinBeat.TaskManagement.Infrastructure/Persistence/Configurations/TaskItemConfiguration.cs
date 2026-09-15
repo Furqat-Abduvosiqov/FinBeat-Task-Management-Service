@@ -46,13 +46,8 @@ internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
         // that asks for every status in creation order - that would sort the whole table per page.
         builder.HasIndex(task => new { task.CreatedAt, task.Id });
 
-        // PostgreSQL's own row version. Without it two requests can load the same task, both save,
-        // and the last write wins while both events still reach the outbox - leaving a consumer told
-        // of a change the row never kept.
-        //
-        // A shadow property rather than UseXminAsConcurrencyToken, which Npgsql 8 marks obsolete.
-        // Its migration adds no DDL, because xmin is a system column every table already has; the
-        // migration exists only so the model snapshot stays in step.
+        // PostgreSQL's own row version, so a concurrent write is reported rather than silently lost.
+        // A shadow property because UseXminAsConcurrencyToken is obsolete in Npgsql 8. Adds no DDL.
         builder.Property<uint>("xmin").IsRowVersion();
     }
 }

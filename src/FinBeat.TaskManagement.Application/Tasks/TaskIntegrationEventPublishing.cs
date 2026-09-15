@@ -9,11 +9,7 @@ namespace FinBeat.TaskManagement.Application.Tasks;
 internal static class TaskIntegrationEventPublishing
 {
     /// <summary>Publishes everything the aggregate has raised, then clears it.</summary>
-    /// <remarks>
-    /// Call this before SaveChangesAsync. The outbox row is written through the same DbContext, so
-    /// the event and the change that caused it commit together - and a deleted entity is detached
-    /// once the save completes, taking its events with it.
-    /// </remarks>
+    /// <remarks>Call before SaveChangesAsync, so the event and the change that caused it commit together.</remarks>
     internal static async Task PublishRaisedEventsAsync(
         this IIntegrationEventPublisher publisher,
         TaskItem task,

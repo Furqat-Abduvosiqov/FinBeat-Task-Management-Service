@@ -55,9 +55,8 @@ public static class DependencyInjection
 
         services.AddMassTransit(bus =>
         {
-            // MassTransit posts usage data to usage-tracking.masstransit.io on startup. A backend
-            // service should talk to its own dependencies and nothing else; this was visible in the
-            // traces as an outbound POST to a third party.
+            // MassTransit phones home to usage-tracking.masstransit.io on startup. This service talks to
+            // its own dependencies and nothing else.
             bus.DisableUsageTelemetry();
 
             // A publish and the state change that caused it commit together, or neither does.
@@ -71,20 +70,13 @@ public static class DependencyInjection
 
             bus.UsingRabbitMq((context, rabbit) =>
             {
-                // Load-bearing. Every publish here goes through the outbox, and the outbox send path
-                // declares only the exchange it sends to - argument and all, but not the alternate
-                // exchange that argument names. Without the alternate exchange on the broker before
-                // the first publish, RabbitMQ drops the diverted message exactly as it would have
-                // dropped the original.
+                // Load-bearing: the outbox send path declares only the exchange it sends to, not the
+                // alternate exchange its argument names. Without it the diverted message is dropped too.
                 rabbit.DeployPublishTopology = true;
 
-                // The outbox guarantees the broker accepted the event, not that anyone was listening.
-                // A fanout exchange with nothing bound discards silently - no error, no log, nothing
-                // returned to the publisher - so an event published before the listener first declares
-                // its queue simply disappears. The alternate exchange catches those instead, turning
-                // that silence into a queue you can watch filling up.
-                //
-                // Driven off the assembly rather than a list, so a new contract cannot be added without it.
+                // The outbox guarantees the broker accepted the event, not that anyone was listening. A
+                // fanout exchange with nothing bound discards silently; the alternate exchange catches
+                // those instead. Driven off the assembly so a new contract cannot miss it.
                 foreach (var integrationEvent in IntegrationEventTypes)
                 {
                     rabbit.Publish(integrationEvent, exchange => exchange.BindAlternateExchangeQueue(UnroutableName));

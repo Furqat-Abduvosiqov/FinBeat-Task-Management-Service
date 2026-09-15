@@ -48,12 +48,8 @@ public sealed class DeleteTaskHandler(
         }
         catch (DbUpdateConcurrencyException)
         {
-            // The DELETE matched nothing at the version we read. Three ways in: another caller deleted the
-            // row, another caller updated it - xmin is the token, so any writer moves it, and that is the
-            // one case where the row survives - or, now that EnableRetryOnFailure is on, our own first
-            // attempt committed and only its acknowledgement was lost, so the retry matched zero rows.
-            // NotFound is the honest answer to the two that matter and the same one a second DELETE of this
-            // id already gets; a caller who cares about the update case re-reads and sees it.
+            // Nothing matched at the version we read: deleted, updated by someone else, or our own retry
+            // after a lost acknowledgement. NotFound is the honest answer to all three.
             return Result.Failure(TaskErrors.NotFound(command.TaskId));
         }
 

@@ -10,11 +10,7 @@ using Shouldly;
 namespace FinBeat.TaskManagement.IntegrationTests.Tasks;
 
 /// <summary>Proves a task that moved underneath a request is reported rather than overwritten.</summary>
-/// <remarks>
-/// The race is made deterministic: the context loads and tracks the row, another writer changes it
-/// through raw SQL, and the handler then works from the copy it already holds - which is exactly the
-/// state a second request would be in, without needing two requests to interleave by luck.
-/// </remarks>
+/// <remarks>The race is deterministic: one context holds the row while raw SQL changes it underneath.</remarks>
 [Collection(nameof(PostgresCollection))]
 [Trait("Category", "RequiresDocker")]
 public sealed class TaskConcurrencyTests(PostgresFixture fixture)

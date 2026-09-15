@@ -1,12 +1,7 @@
 namespace FinBeat.TaskManagement.Domain.Tasks;
 
 /// <summary>Which status changes a task is allowed to make.</summary>
-/// <remarks>
-/// Separate from the aggregate so the whole matrix fits one parameterized test instead of being
-/// spread across several methods. Restoring an archived task lands in <see cref="TaskItemStatus.New"/>
-/// rather than whatever it was before: recovering that would need a field the specification never
-/// asks for, and the status-changed event already records it.
-/// </remarks>
+/// <remarks>Separate from the aggregate so the whole matrix fits one parameterized test. Restoring lands in New.</remarks>
 public static class TaskItemStatusRules
 {
     /// <summary>Whether a task may move from one status to another.</summary>

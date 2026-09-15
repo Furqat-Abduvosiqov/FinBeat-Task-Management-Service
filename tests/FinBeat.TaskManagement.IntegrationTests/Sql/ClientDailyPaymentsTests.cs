@@ -6,10 +6,7 @@ using Testcontainers.PostgreSql;
 namespace FinBeat.TaskManagement.IntegrationTests.Sql;
 
 /// <summary>Runs Задание 2 against a real PostgreSQL, exactly as the repository ships it.</summary>
-/// <remarks>
-/// The script under sql/postgresql is applied verbatim rather than restated here, so editing it is
-/// what these assertions are about. The data and the two expected results are the assignment's own.
-/// </remarks>
+/// <remarks>Applies the shipped script verbatim, with the assignment's own data and expected results.</remarks>
 [Trait("Category", "RequiresDocker")]
 public sealed class ClientDailyPaymentsTests : IAsyncLifetime
 {

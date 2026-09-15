@@ -7,11 +7,7 @@ using System.Xml.Linq;
 namespace FinBeat.TaskManagement.Api.OpenApi;
 
 /// <summary>Describes an enum as the numbers it travels as, naming what each one means.</summary>
-/// <remarks>
-/// OpenAPI has no field for documenting an individual enum member, so the meanings go in the
-/// schema description. They are read from the XML documentation the enum already carries rather
-/// than restated here: a summary and its documentation cannot drift when they are the same text.
-/// </remarks>
+/// <remarks>Meanings go in the schema description, read from the enum's own XML docs so they cannot drift.</remarks>
 internal static class EnumDocumentation
 {
     private static readonly ConcurrentDictionary<Assembly, XDocument?> Documents = new();

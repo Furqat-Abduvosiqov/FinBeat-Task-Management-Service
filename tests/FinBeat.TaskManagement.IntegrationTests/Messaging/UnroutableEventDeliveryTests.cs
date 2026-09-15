@@ -11,12 +11,7 @@ using Testcontainers.RabbitMq;
 namespace FinBeat.TaskManagement.IntegrationTests.Messaging;
 
 /// <summary>Proves against a real broker that an event nothing is bound to receive is kept, not dropped.</summary>
-/// <remarks>
-/// The topology assertions in <see cref="UnroutableEventTests"/> read what MassTransit intends to
-/// declare, which is not the same as what the broker ends up holding - the send path declares only
-/// the exchange being published to. Nothing short of a broker catches that difference, which is why
-/// this test pays for a container.
-/// </remarks>
+/// <remarks>What MassTransit intends to declare is not what the broker ends up holding, and only a real broker shows the difference.</remarks>
 [Trait("Category", "RequiresDocker")]
 public sealed class UnroutableEventDeliveryTests : IAsyncLifetime
 {

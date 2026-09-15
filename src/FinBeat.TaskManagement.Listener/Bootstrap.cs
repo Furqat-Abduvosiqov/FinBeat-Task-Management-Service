@@ -25,9 +25,8 @@ internal static class Bootstrap
     // MassTransit emits its own ActivitySource, so subscribing needs the name and no extra package.
     private const string MassTransitActivitySource = "MassTransit";
 
-    // The other half of the alternate-exchange contract. Binding a queue re-declares the exchange the
-    // API publishes to, and an exchange argument is fixed at declare time - name a different one, or
-    // none, and the broker rejects the declare with PRECONDITION_FAILED and the listener never starts.
+    // The other half of the alternate-exchange contract: binding a queue re-declares the API's
+    // exchange, and a mismatched argument is PRECONDITION_FAILED and a listener that never starts.
     private const string UnroutableName = "unroutable";
 
     /// <summary>A console logger for the window before configuration is read, so a failure while building the host is not lost.</summary>

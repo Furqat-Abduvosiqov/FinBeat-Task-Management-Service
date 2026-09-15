@@ -4,11 +4,7 @@ using Shouldly;
 namespace FinBeat.TaskManagement.IntegrationTests;
 
 /// <summary>Holds the repository to one version of each container image.</summary>
-/// <remarks>
-/// Two tags of the same image is a second download of a dependency that was already there, and -
-/// worse - a test exercising a different build than the stack runs. This reads the images out of
-/// docker-compose.yml, the Dockerfiles and <see cref="TestImages"/>, and fails when they disagree.
-/// </remarks>
+/// <remarks>Reads the images out of docker-compose.yml, the Dockerfiles and <see cref="TestImages"/>, and fails when they disagree.</remarks>
 public sealed class ContainerImageTests
 {
     [Fact]

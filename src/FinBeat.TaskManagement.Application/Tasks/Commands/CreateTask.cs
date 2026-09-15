@@ -56,15 +56,8 @@ public sealed class CreateTaskHandler(
         }
         catch (DbUpdateException)
         {
-            // The retrying execution strategy re-sends this INSERT when the first attempt's commit reached
-            // the server but its acknowledgement did not come back - the restart case EnableRetryOnFailure
-            // exists for. The id is assigned in the domain, not by the database, so the replay carries the
-            // same primary key and Postgres rejects it as a unique violation, which is not transient. If a
-            // row now exists under this id, the first attempt committed and nobody else could have produced
-            // that id, so the create is done. AsNoTracking because the failed save left this task tracked as
-            // Added under the same key and a tracking query would resolve to that instance. The SQLSTATE
-            // itself is out of reach here - Application references EF Core and nothing else - so the probe
-            // stands in for 23505, and anything the probe does not explain is rethrown unchanged.
+            // A retry may have replayed a commit that already succeeded. The id comes from the domain,
+            // so if the row is there, this create is done. Anything else is a real failure.
             var committed = await context.Tasks
                 .AsNoTracking()
                 .FindByIdAsync(task.Id.Value, cancellationToken);

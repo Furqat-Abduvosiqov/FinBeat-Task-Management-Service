@@ -1,11 +1,7 @@
 namespace FinBeat.TaskManagement.Application.Abstractions;
 
 /// <summary>Publishes integration events onto whatever transport Infrastructure has configured.</summary>
-/// <remarks>
-/// A port rather than MassTransit's own publish endpoint, because the architecture rules allow this
-/// layer EF Core and nothing else. A use case says what happened; which broker hears about it, and
-/// whether the publish is transactional, stays Infrastructure's decision.
-/// </remarks>
+/// <remarks>A port, not MassTransit directly: the transport stays Infrastructure's decision.</remarks>
 public interface IIntegrationEventPublisher
 {
     /// <summary>Publishes one integration event.</summary>

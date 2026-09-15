@@ -1,12 +1,7 @@
 namespace FinBeat.TaskManagement.IntegrationTests;
 
 /// <summary>The container images the tests start.</summary>
-/// <remarks>
-/// Named here rather than at each call site so two fixtures cannot drift onto different tags, and so
-/// <c>ContainerImageTests</c> has something to compare against what the repository declares elsewhere.
-/// Every one of these has to match docker-compose.yml: a test that runs against a different build of
-/// a dependency than the stack does is testing something nobody ships, and pulls a second copy to do it.
-/// </remarks>
+/// <remarks>Named here so two fixtures cannot drift apart, and so every one can be matched against docker-compose.yml.</remarks>
 internal static class TestImages
 {
     /// <summary>The database behind the container-backed suites.</summary>

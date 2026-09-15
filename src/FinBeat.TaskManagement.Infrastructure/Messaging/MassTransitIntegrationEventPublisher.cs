@@ -4,12 +4,7 @@ using MassTransit;
 namespace FinBeat.TaskManagement.Infrastructure.Messaging;
 
 /// <summary>Publishes integration events through MassTransit.</summary>
-/// <remarks>
-/// Scoped alongside the DbContext on purpose. With the bus outbox enabled, a publish through this
-/// endpoint is written to the outbox table inside the same transaction as the change that caused it,
-/// and delivered afterwards - so a task is never saved without its event, nor an event sent for a
-/// task that was rolled back.
-/// </remarks>
+/// <remarks>Scoped alongside the DbContext, so a publish lands in the outbox inside the same transaction.</remarks>
 internal sealed class MassTransitIntegrationEventPublisher(IPublishEndpoint publishEndpoint)
     : IIntegrationEventPublisher
 {

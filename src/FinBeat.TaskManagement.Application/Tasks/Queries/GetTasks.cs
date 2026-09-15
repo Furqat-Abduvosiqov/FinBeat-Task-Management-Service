@@ -57,10 +57,8 @@ public sealed class GetTasksHandler(IApplicationDbContext context)
         var totalItems = await tasks.LongCountAsync(cancellationToken);
 
         var matches = await tasks
-            // Id breaks ties: CreatedAt is not unique, and without a total order two pages can repeat
-            // a task and skip another between them. Defensive rather than demonstrated - PostgreSQL
-            // happens to answer this table in a stable order either way, so no test here can fail on
-            // it, and a test that cannot fail would only advertise a guarantee it does not provide.
+            // Id breaks ties, since CreatedAt is not unique and two pages could otherwise overlap.
+            // Defensive: PostgreSQL happens to be stable here, so no test can fail on it.
             .OrderBy(task => task.CreatedAt)
             .ThenBy(task => task.Id)
             .Skip((query.PageNumber - 1) * query.PageSize)

@@ -1,11 +1,7 @@
 namespace FinBeat.TaskManagement.Domain.Abstractions;
 
 /// <summary>Base class for aggregate roots: the consistency boundary, and the only thing that raises domain events.</summary>
-/// <remarks>
-/// <see cref="Raise"/> is protected and <see cref="DomainEvents"/> is read-only, so an aggregate is
-/// the only thing that can record its own events. That is what makes "state changed" and "an event
-/// exists" inseparable.
-/// </remarks>
+/// <remarks>Only an aggregate can record its own events, which keeps the state change and the event together.</remarks>
 /// <typeparam name="TId">The type of the aggregate's identifier.</typeparam>
 public abstract class AggregateRoot<TId>
     where TId : notnull

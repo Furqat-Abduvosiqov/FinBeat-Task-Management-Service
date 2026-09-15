@@ -27,11 +27,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         {
             npgsql.MigrationsHistoryTable(MigrationsHistoryTableName);
 
-            // A restarted or failed-over server terminates its backends, and Npgsql already counts
-            // that class of error (57P01, 57P02, 57P03, 53300) as transient. Without a retrying
-            // strategy the next use of a pooled connection surfaces the termination as a 500 the
-            // caller can do nothing about; with one the query simply runs again on a fresh
-            // connection. Managed PostgreSQL does exactly this during patching and failover.
+            // A restarted or failed-over server terminates its backends. Without a retrying strategy the
+            // next use of a pooled connection becomes a 500 the caller can do nothing about.
             npgsql.EnableRetryOnFailure();
         });
 

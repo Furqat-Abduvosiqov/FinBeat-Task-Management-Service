@@ -4,11 +4,7 @@ using FluentValidation;
 namespace FinBeat.TaskManagement.Api.Endpoints.Validation;
 
 /// <summary>The rules a task title and description obey, so create and update cannot drift apart.</summary>
-/// <remarks>
-/// These restate limits the value objects already enforce. The domain stays the authority - it is
-/// what a non-HTTP caller meets - while this layer turns the same limits into a field-level answer
-/// before a request reaches the database.
-/// </remarks>
+/// <remarks>Restates the value objects' limits as field-level answers. The domain stays the authority.</remarks>
 internal static class TaskRequestRules
 {
     internal static IRuleBuilderOptions<TRequest, string?> MustBeATaskTitle<TRequest>(

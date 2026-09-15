@@ -37,9 +37,8 @@ internal static class Bootstrap
         builder.Services.AddProblemDetails();
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
-        // Defaults to true only in Development, so without this a body the binder cannot read - or a
-        // query value it cannot parse - is a bare 400 with no body in production, and the handler
-        // below never sees it. Every failure carries problem details in every environment or none do.
+        // Development-only by default. Without it a body the binder cannot read is a bare 400 in
+        // production, with no problem details.
         builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 
         builder.Services.AddValidatorsFromAssemblyContaining<CreateTaskRequestValidator>(includeInternalTypes: true);
@@ -68,17 +67,13 @@ internal static class Bootstrap
 
             options.SupportNonNullableReferenceTypes();
 
-            // The XML from this assembly, from Application, which owns TaskResponse, and from Domain,
-            // whose enum member summaries are what documents each status number. Swashbuckle resolves
-            // the paths itself, and a project reference copies its XML to the consumer's output, so a
-            // missing file means the build changed and is worth failing on.
+            // Api, Application (TaskResponse) and Domain, whose enum summaries document each status number.
             options.IncludeXmlComments(Assembly.GetExecutingAssembly());
             options.IncludeXmlComments(typeof(TaskResponse).Assembly);
             options.IncludeXmlComments(typeof(TaskItemStatus).Assembly);
 
-            // After the XML comments, not before: enums travel as numbers and the document has to say
-            // what each number means, but Swashbuckle's own XML filter assigns Description outright and
-            // would drop the member list if this ran first. Filters run in registration order.
+            // After the XML comments: Swashbuckle's own filter assigns Description outright and would
+            // drop the member list. Filters run in registration order.
             options.SchemaFilter<EnumSchemaFilter>();
         });
 
@@ -99,9 +94,8 @@ internal static class Bootstrap
     /// <summary>Builds the request pipeline.</summary>
     internal static WebApplication UseApiPipeline(this WebApplication app)
     {
-        // Request logging goes outside the exception handler, not inside it. Inside, an exception
-        // reaches this middleware before the handler has turned it into a 400, so every malformed
-        // request is logged as "responded 500" at Error - a client mistake that pages somebody.
+        // Logging goes outside the exception handler. Inside, it sees the exception before the handler
+        // turns it into a 400, and logs a client mistake as a 500.
         app.UseSerilogRequestLogging();
         app.UseExceptionHandler();
 

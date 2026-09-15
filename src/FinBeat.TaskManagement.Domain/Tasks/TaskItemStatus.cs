@@ -1,10 +1,7 @@
 namespace FinBeat.TaskManagement.Domain.Tasks;
 
 /// <summary>Where a task is in its lifecycle.</summary>
-/// <remarks>
-/// The specification names three statuses. <see cref="Archived"/> is a fourth, added because this
-/// project deletes for real: archiving is how you keep a task's history instead.
-/// </remarks>
+/// <remarks>Archived is a fourth status, added because deletion here is real.</remarks>
 public enum TaskItemStatus
 {
     /// <summary>Created, not started.</summary>

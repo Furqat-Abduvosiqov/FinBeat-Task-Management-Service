@@ -102,13 +102,9 @@ public sealed class ApiDocumentationTests
     [Fact]
     public async Task The_version_the_document_states_is_one_the_bundled_Swagger_UI_reads()
     {
-        // Swashbuckle ships the generator and the UI as separate packages, and they can fall out of
-        // step. Microsoft.OpenApi 1.6.23 began stamping documents "3.0.4" where it used to write
-        // "3.0.1", while the swagger-ui bundled up to Swashbuckle 7.2.0 still tested that field with
-        // ^3\.0\.([0123])(?:-rc[012])?$ - so a valid document rendered as nothing but "The provided
-        // definition does not specify a valid version field". Asserting a literal version here would
-        // only restate what the serialiser does; what is worth holding is that the two halves still
-        // agree, so the UI's own test is read out of the bundle it serves and applied to the version.
+        // The generator and the UI ship separately and can fall out of step, which once rendered a
+        // valid document as "does not specify a valid version field". So the UI's own version test is
+        // read out of the bundle it serves and applied to the document, rather than asserting a literal.
         await using var app = await StartAsync();
 
         var version = (await ReadDocumentAsync(app)).GetProperty("openapi").GetString();

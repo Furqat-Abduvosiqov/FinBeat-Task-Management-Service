@@ -3,11 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace FinBeat.TaskManagement.Application.Results;
 
 /// <summary>The outcome of a use case: success, or one <see cref="Results.Error"/> saying why not.</summary>
-/// <remarks>
-/// A failure the caller is expected to handle - an unknown id, a rejected title - is a return value
-/// rather than an exception, so the signature admits it can happen. Exceptions stay for the failures
-/// nobody can do anything about.
-/// </remarks>
+/// <remarks>Expected failures are return values; exceptions stay for what nobody can handle.</remarks>
 public class Result
 {
     private protected Result(Error? error) => Error = error;

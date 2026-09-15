@@ -3,13 +3,9 @@ using Shouldly;
 
 namespace FinBeat.TaskManagement.ArchitectureTests.Rules;
 
-// Keeps technology out of the inner layers. The layering rules cannot do this on their own: an ORM
-// or a broker arrives as a package, not a project reference.
-//
-// Two rules, deliberately, because they fail on different mistakes. The declaration rule reads the
-// project file and catches an unused package someone added on purpose - the compiler drops it, so the
-// IL never shows it. The compiled rule reads the assembly and catches what was actually used, whether
-// or not anything was declared.
+// Keeps technology out of the inner layers, which the layering rules cannot do: an ORM arrives as a
+// package, not a project reference. Two rules, because they fail on different mistakes - one reads
+// the project file, the other the compiled assembly.
 public sealed class LayerPurityTests
 {
     private static readonly string SharedFrameworkDirectory =

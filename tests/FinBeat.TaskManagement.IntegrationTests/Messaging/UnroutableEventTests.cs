@@ -8,11 +8,7 @@ using Shouldly;
 namespace FinBeat.TaskManagement.IntegrationTests.Messaging;
 
 /// <summary>Proves an event that no consumer queue is bound to receive is diverted rather than dropped.</summary>
-/// <remarks>
-/// Reads the topology MassTransit would declare, so no broker is needed. The failure being guarded
-/// against is a silent one: RabbitMQ discards an unroutable message without telling the publisher,
-/// so nothing but this topology stands between a listener that has never started and a lost event.
-/// </remarks>
+/// <remarks>Reads the topology MassTransit would declare, so no broker is needed. The failure guarded against is a silent one.</remarks>
 public sealed class UnroutableEventTests
 {
     private const string AlternateExchangeArgument = "alternate-exchange";
