@@ -2,7 +2,6 @@ using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using Shouldly;
 using Testcontainers.PostgreSql;
 
 namespace FinBeat.TaskManagement.IntegrationTests.Persistence;
@@ -42,7 +41,7 @@ public sealed class PostgresFixture : IAsyncLifetime
     public ApplicationDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>();
-        options.UseNpgsql(_connectionString ?? throw new InvalidOperationException($"{nameof(InitializeAsync)} has not run yet."));
+        options.UseNpgsql(ConnectionString);
 
         return new ApplicationDbContext(options.Options);
     }

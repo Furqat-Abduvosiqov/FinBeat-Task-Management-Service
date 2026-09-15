@@ -1,5 +1,4 @@
 using FinBeat.TaskManagement.Application.Results;
-using FinBeat.TaskManagement.Application.Tasks;
 using FinBeat.TaskManagement.Application.Tasks.Commands;
 using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Domain.Tasks.ValueObjects;

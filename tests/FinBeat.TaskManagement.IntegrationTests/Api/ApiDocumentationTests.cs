@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using FinBeat.TaskManagement.Api;
 using FinBeat.TaskManagement.Domain.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;

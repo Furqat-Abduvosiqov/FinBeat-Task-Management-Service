@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using FinBeat.TaskManagement.Api;
 using FinBeat.TaskManagement.Api.Endpoints;
 using FinBeat.TaskManagement.Api.Endpoints.Validation;
 using FinBeat.TaskManagement.Domain.Tasks;

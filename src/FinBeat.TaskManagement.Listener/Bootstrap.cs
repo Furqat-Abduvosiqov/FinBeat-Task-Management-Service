@@ -48,18 +48,15 @@ internal static class Bootstrap
 
     private static void AddMessaging(this HostApplicationBuilder builder)
     {
-        // The same options type and the same endpoint name formatter the publisher uses, so the
-        // queues this binds are the ones the API's exchanges deliver to.
         builder.Services.AddOptions<RabbitMqTransportOptions>()
             .Bind(builder.Configuration.GetSection(RabbitMqSectionName));
 
         builder.Services.AddMassTransit(bus =>
         {
-            // Same outbound call as the API suppresses, for the same reason.
             bus.DisableUsageTelemetry();
 
             bus.SetKebabCaseEndpointNameFormatter();
-            // Named rather than assembly-scanned: the scan reads exported types only, and these are internal.
+            
             bus.AddConsumer<TaskCreatedConsumer>();
             bus.AddConsumer<TaskDetailsUpdatedConsumer>();
             bus.AddConsumer<TaskStatusChangedConsumer>();
@@ -83,15 +80,17 @@ internal static class Bootstrap
     {
         var section = builder.Configuration.GetSection(OpenTelemetrySection);
         var serviceName = section[ServiceNameKey] ?? builder.Environment.ApplicationName;
-        var otlpEndpoint = section[OtlpEndpointKey] ?? Environment.GetEnvironmentVariable(OtlpEndpointVariable);
+        var configuredEndpoint = section[OtlpEndpointKey];
+        var otlpEndpoint = string.IsNullOrWhiteSpace(configuredEndpoint)
+            ? Environment.GetEnvironmentVariable(OtlpEndpointVariable)
+            : configuredEndpoint;
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(serviceName))
             .WithTracing(tracing =>
             {
                 tracing.AddSource(MassTransitActivitySource);
-
-                // Opt in: with no endpoint configured every span would fail against localhost:4317.
+                
                 if (!string.IsNullOrWhiteSpace(otlpEndpoint))
                 {
                     tracing.AddOtlpExporter(exporter => exporter.Endpoint = new Uri(otlpEndpoint));

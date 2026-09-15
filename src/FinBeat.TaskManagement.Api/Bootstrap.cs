@@ -32,13 +32,10 @@ internal static class Bootstrap
             .ReadFrom.Services(services));
 
         builder.AddTelemetry();
-
-        // Without AddProblemDetails the handler has nothing to write through and the body comes back empty.
+        
         builder.Services.AddProblemDetails();
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-
-        // Development-only by default. Without it a body the binder cannot read is a bare 400 in
-        // production, with no problem details.
+        
         builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 
         builder.Services.AddValidatorsFromAssemblyContaining<CreateTaskRequestValidator>(includeInternalTypes: true);
@@ -66,14 +63,11 @@ internal static class Bootstrap
             });
 
             options.SupportNonNullableReferenceTypes();
-
-            // Api, Application (TaskResponse) and Domain, whose enum summaries document each status number.
+            
             options.IncludeXmlComments(Assembly.GetExecutingAssembly());
             options.IncludeXmlComments(typeof(TaskResponse).Assembly);
             options.IncludeXmlComments(typeof(TaskItemStatus).Assembly);
-
-            // After the XML comments: Swashbuckle's own filter assigns Description outright and would
-            // drop the member list. Filters run in registration order.
+            
             options.SchemaFilter<EnumSchemaFilter>();
         });
 
@@ -94,8 +88,6 @@ internal static class Bootstrap
     /// <summary>Builds the request pipeline.</summary>
     internal static WebApplication UseApiPipeline(this WebApplication app)
     {
-        // Logging goes outside the exception handler. Inside, it sees the exception before the handler
-        // turns it into a 400, and logs a client mistake as a 500.
         app.UseSerilogRequestLogging();
         app.UseExceptionHandler();
 
@@ -115,8 +107,10 @@ internal static class Bootstrap
     {
         var section = builder.Configuration.GetSection("OpenTelemetry");
         var serviceName = section["ServiceName"] ?? builder.Environment.ApplicationName;
-        var otlpEndpoint = section["OtlpEndpoint"]
-            ?? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+        var configuredEndpoint = section["OtlpEndpoint"];
+        var otlpEndpoint = string.IsNullOrWhiteSpace(configuredEndpoint)
+            ? Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT")
+            : configuredEndpoint;
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(serviceName))
@@ -125,11 +119,8 @@ internal static class Bootstrap
                 tracing.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddNpgsql()
-                    // MassTransit emits its own ActivitySource, so subscribing needs the name and
-                    // no extra package.
                     .AddSource("MassTransit");
-
-                // Opt in: with no endpoint configured every span would fail against localhost:4317.
+                
                 if (!string.IsNullOrWhiteSpace(otlpEndpoint))
                 {
                     tracing.AddOtlpExporter(exporter => exporter.Endpoint = new Uri(otlpEndpoint));

@@ -97,13 +97,13 @@ internal static class ArchitectureModel
     // Blind spot worth knowing: forbidden names are matched as namespace prefixes, so a dependency on
     // a global-namespace type is invisible here. That is what makes the namespace rule load-bearing.
     internal static IReadOnlyList<string> TypesDependingOn(string layer, params string[] forbidden) =>
-        (Types.InAssembly(LoadAssembly(layer))
+        Types.InAssembly(LoadAssembly(layer))
             .ShouldNot()
             .HaveDependencyOnAny(forbidden)
             .GetResult()
-            .FailingTypes ?? [])
-        .Select(type => string.IsNullOrWhiteSpace(type.Explanation)
-            ? type.FullName
-            : $"{type.FullName} ({type.Explanation})")
-        .ToArray();
+            .FailingTypes
+            .Select(type => string.IsNullOrWhiteSpace(type.Explanation)
+                ? type.FullName
+                : $"{type.FullName} ({type.Explanation})")
+            .ToArray();
 }
