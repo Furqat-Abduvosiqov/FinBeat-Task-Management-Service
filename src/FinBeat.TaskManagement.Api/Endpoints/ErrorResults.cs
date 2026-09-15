@@ -9,11 +9,11 @@ internal static class ErrorResults
     /// <remarks>
     /// The status comes from <see cref="ErrorType"/> rather than from the error code, so adding a
     /// code never means revisiting this. <see cref="Error.Code"/> travels as the <c>code</c>
-    /// extension, since that is the part callers are told they may match on.
+    /// extension, since that is the part callers are told they may match on. The title is left to
+    /// the framework, which fills it from the status along with the RFC 9110 type URI.
     /// </remarks>
     internal static ProblemHttpResult ToProblem(this Error error) => TypedResults.Problem(
         statusCode: StatusCodeFor(error.Type),
-        title: TitleFor(error.Type),
         detail: error.Description,
         extensions: new Dictionary<string, object?> { ["code"] = error.Code });
 
@@ -22,12 +22,5 @@ internal static class ErrorResults
         ErrorType.NotFound => StatusCodes.Status404NotFound,
         ErrorType.Conflict => StatusCodes.Status409Conflict,
         _ => StatusCodes.Status400BadRequest,
-    };
-
-    private static string TitleFor(ErrorType type) => type switch
-    {
-        ErrorType.NotFound => "Not Found",
-        ErrorType.Conflict => "Conflict",
-        _ => "Bad Request",
     };
 }

@@ -6,7 +6,7 @@ using FinBeat.TaskManagement.Application.Tasks.Commands;
 using FinBeat.TaskManagement.Application.Tasks.Queries;
 using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Infrastructure;
-using Microsoft.OpenApi.Any;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 using Npgsql;
 using OpenTelemetry.Resources;
@@ -52,6 +52,11 @@ internal static class Bootstrap
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
+        // The same converter again, on the options Swashbuckle reads. It never sees the one above -
+        // that is the minimal-API serializer - and would otherwise document every enum as an integer.
+        builder.Services.Configure<JsonOptions>(options =>
+            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddApiDocumentation();
         builder.Services.AddInfrastructure(builder.Configuration);
@@ -74,10 +79,10 @@ internal static class Bootstrap
                     + "`code` extension, which is the part worth matching on.",
             });
 
-            // The request bodies. A query parameter needs stating at the endpoint instead - see ListAsync.
-            options.MapType<TaskItemStatus>(OpenApiConventions.StatusSchema);
-
+            // Query parameters reach ApiExplorer as the strings they were parsed from, so the converter
+            // above never sees them and their schema has to be stated.
             options.OperationFilter<StatusParameterFilter>();
+
             options.SupportNonNullableReferenceTypes();
 
             // The XML from this assembly and from Application, which owns TaskResponse.

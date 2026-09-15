@@ -1,10 +1,8 @@
 using System.Collections.Concurrent;
 using System.Net;
-using System.Text.Json;
 using FinBeat.TaskManagement.Api;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog.Core;
@@ -36,7 +34,7 @@ public sealed class GlobalExceptionHandlerTests
         response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
         response.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
 
-        var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        var problem = await response.ReadJsonAsync();
         problem.GetProperty("status").GetInt32().ShouldBe(500);
         problem.GetProperty("title").GetString().ShouldBe("Internal Server Error");
         problem.GetProperty("traceId").GetString().ShouldNotBeNullOrWhiteSpace();
@@ -69,31 +67,19 @@ public sealed class GlobalExceptionHandlerTests
             && logged.Exception.Message == ExceptionMessage);
     }
 
-    private static async Task<WebApplication> StartAsync(string environment, ILogEventSink? sink = null)
-    {
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
-        builder.WebHost.UseTestServer();
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            [TestConfiguration.ConnectionStringKey] = TestConfiguration.UnusedConnectionString
-        });
-
-        builder.AddApiHost();
-
-        // ReadFrom.Services picks this up, so the host logs through its own pipeline.
-        if (sink is not null)
-        {
-            builder.Services.AddSingleton(sink);
-        }
-
-        var app = builder.Build();
-        app.UseApiPipeline();
-        app.MapGet(ThrowingRoute, void () => throw new InvalidOperationException(ExceptionMessage));
-
-        await app.StartAsync();
-
-        return app;
-    }
+    private static Task<WebApplication> StartAsync(string environment, ILogEventSink? sink = null) =>
+        TestApiHost.StartAsync(
+            environment,
+            // ReadFrom.Services picks the sink up, so the host logs through its own pipeline.
+            configureBuilder: builder =>
+            {
+                if (sink is not null)
+                {
+                    builder.Services.AddSingleton(sink);
+                }
+            },
+            configureApp: app =>
+                app.MapGet(ThrowingRoute, void () => throw new InvalidOperationException(ExceptionMessage)));
 
     private sealed class CapturingSink : ILogEventSink
     {

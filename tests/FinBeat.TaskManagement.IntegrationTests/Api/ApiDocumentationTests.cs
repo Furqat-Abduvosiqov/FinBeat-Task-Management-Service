@@ -2,9 +2,7 @@ using System.Text.Json;
 using FinBeat.TaskManagement.Api;
 using FinBeat.TaskManagement.Domain.Tasks;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Shouldly;
 
@@ -42,14 +40,18 @@ public sealed class ApiDocumentationTests
         var document = await ReadDocumentAsync(app);
         var expected = Enum.GetNames<TaskItemStatus>();
 
-        var body = document.GetProperty("components").GetProperty("schemas")
-            .GetProperty("ChangeTaskStatusRequest").GetProperty("properties").GetProperty("status");
+        var schemas = document.GetProperty("components").GetProperty("schemas");
 
         var query = document.GetProperty("paths").GetProperty("/tasks").GetProperty("get")
             .GetProperty("parameters").EnumerateArray()
             .Single(parameter => parameter.GetProperty("name").GetString() == "status");
 
-        Names(body).ShouldBe(expected);
+        // The converter gives every enum one named component that request bodies point at; a query
+        // parameter never reaches it, so the filter states that schema inline.
+        schemas.GetProperty("ChangeTaskStatusRequest").GetProperty("properties").GetProperty("status")
+            .GetProperty("$ref").GetString().ShouldBe("#/components/schemas/TaskItemStatus");
+
+        Names(schemas.GetProperty(nameof(TaskItemStatus))).ShouldBe(expected);
         Names(query.GetProperty("schema")).ShouldBe(expected);
         query.GetProperty("description").GetString().ShouldNotBeNullOrWhiteSpace();
     }
@@ -78,29 +80,8 @@ public sealed class ApiDocumentationTests
     }
 
     private static async Task<JsonElement> ReadDocumentAsync(WebApplication app) =>
-        JsonDocument.Parse(await app.GetTestClient().GetStringAsync("/swagger/v1/swagger.json")).RootElement;
+        await (await app.GetTestClient().GetAsync("/swagger/v1/swagger.json")).ReadJsonAsync();
 
-    private static async Task<WebApplication> StartAsync()
-    {
-        // Development, because that is the only environment the pipeline serves Swagger in.
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
-        {
-            EnvironmentName = Environments.Development,
-        });
-
-        builder.WebHost.UseTestServer();
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            [TestConfiguration.ConnectionStringKey] = TestConfiguration.UnusedConnectionString,
-        });
-
-        builder.AddApiHost();
-
-        var app = builder.Build();
-        app.UseApiPipeline();
-
-        await app.StartAsync();
-
-        return app;
-    }
+    // Development, because that is the only environment the pipeline serves Swagger in.
+    private static Task<WebApplication> StartAsync() => TestApiHost.StartAsync(Environments.Development);
 }

@@ -18,28 +18,14 @@ internal static class OpenApiConventions
     /// <param name="operation">The operation being described.</param>
     /// <param name="parameterName">The parameter to describe.</param>
     /// <param name="description">What to say about it.</param>
-    /// <param name="schema">The schema to state, or null to keep the inferred one.</param>
-    internal static void Describe(
-        OpenApiOperation operation,
-        string parameterName,
-        string description,
-        OpenApiSchema? schema = null)
+    internal static void Describe(OpenApiOperation operation, string parameterName, string description)
     {
         var parameter = operation.Parameters
             .FirstOrDefault(candidate => string.Equals(candidate.Name, parameterName, StringComparison.Ordinal));
 
-        if (parameter is null)
+        if (parameter is not null)
         {
-            return;
-        }
-
-        parameter.Description = description;
-
-        // A query parameter reaches ApiExplorer as the string it was parsed from, so MapType never
-        // sees it and the schema has to be stated here.
-        if (schema is not null)
-        {
-            parameter.Schema = schema;
+            parameter.Description = description;
         }
     }
 }

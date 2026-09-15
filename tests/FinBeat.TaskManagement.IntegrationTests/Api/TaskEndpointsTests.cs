@@ -6,9 +6,7 @@ using FinBeat.TaskManagement.Api;
 using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.IntegrationTests.Persistence;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Shouldly;
 
@@ -25,24 +23,7 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
-        {
-            EnvironmentName = Environments.Production,
-        });
-
-        builder.WebHost.UseTestServer();
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            [TestConfiguration.ConnectionStringKey] = fixture.ConnectionString,
-        });
-
-        builder.AddApiHost();
-
-        _app = builder.Build();
-        _app.UseApiPipeline();
-
-        await _app.StartAsync();
-
+        _app = await TestApiHost.StartAsync(Environments.Production, fixture.ConnectionString);
         _client = _app.GetTestClient();
     }
 
@@ -113,8 +94,13 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
             new { status = nameof(TaskItemStatus.Completed) });
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-        (await ReadJsonAsync(response)).GetProperty("code").GetString()
-            .ShouldBe("task.status.invalid-transition");
+
+        var problem = await ReadJsonAsync(response);
+        problem.GetProperty("code").GetString().ShouldBe("task.status.invalid-transition");
+
+        // Title and type come from the framework's table for the status, not from this project.
+        problem.GetProperty("title").GetString().ShouldBe("Conflict");
+        problem.GetProperty("type").GetString().ShouldNotBeNullOrWhiteSpace();
     }
 
     [Fact]
@@ -165,7 +151,10 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
         var response = await _client.SendAsync(request);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
-        (await ReadJsonAsync(response)).GetProperty("code").GetString().ShouldBe("task.not-found");
+
+        var problem = await ReadJsonAsync(response);
+        problem.GetProperty("code").GetString().ShouldBe("task.not-found");
+        problem.GetProperty("title").GetString().ShouldBe("Not Found");
     }
 
     [Fact]
@@ -195,8 +184,7 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
 
     private static Guid Id(JsonElement task) => task.GetProperty("id").GetGuid();
 
-    private static async Task<JsonElement> ReadJsonAsync(HttpResponseMessage response) =>
-        JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+    private static Task<JsonElement> ReadJsonAsync(HttpResponseMessage response) => response.ReadJsonAsync();
 
     private async Task<JsonElement> CreateAsync(string title)
     {
