@@ -1,7 +1,7 @@
 using FinBeat.TaskManagement.Application.Tasks.Commands;
 using FinBeat.TaskManagement.Contracts.Tasks;
 using FinBeat.TaskManagement.Infrastructure;
-using FinBeat.TaskManagement.IntegrationTests.Persistence.Postgres;
+using FinBeat.TaskManagement.IntegrationTests.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 

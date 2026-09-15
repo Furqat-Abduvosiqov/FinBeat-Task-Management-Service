@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Time.Testing;
 
-namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Postgres;
+namespace FinBeat.TaskManagement.IntegrationTests.Persistence;
 
 /// <summary>The clock every Postgres round-trip test starts from.</summary>
 internal static class Clock

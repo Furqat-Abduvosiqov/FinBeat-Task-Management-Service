@@ -5,7 +5,7 @@ using FinBeat.TaskManagement.Application.Tasks.Queries;
 using FinBeat.TaskManagement.Contracts.Tasks;
 using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
-using FinBeat.TaskManagement.IntegrationTests.Persistence.Postgres;
+using FinBeat.TaskManagement.IntegrationTests.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
 using Shouldly;

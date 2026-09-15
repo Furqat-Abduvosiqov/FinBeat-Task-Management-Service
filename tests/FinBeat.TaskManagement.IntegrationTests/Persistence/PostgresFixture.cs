@@ -5,7 +5,7 @@ using Npgsql;
 using Shouldly;
 using Testcontainers.PostgreSql;
 
-namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Postgres;
+namespace FinBeat.TaskManagement.IntegrationTests.Persistence;
 
 /// <summary>A throwaway PostgreSQL instance, migrated once and shared by every <c>RequiresDocker</c> test through <see cref="PostgresCollection"/>.</summary>
 public sealed class PostgresFixture : IAsyncLifetime

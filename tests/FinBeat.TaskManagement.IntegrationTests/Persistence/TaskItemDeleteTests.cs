@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
-namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Postgres;
+namespace FinBeat.TaskManagement.IntegrationTests.Persistence;
 
 [Collection(nameof(PostgresCollection))]
 [Trait("Category", "RequiresDocker")]
