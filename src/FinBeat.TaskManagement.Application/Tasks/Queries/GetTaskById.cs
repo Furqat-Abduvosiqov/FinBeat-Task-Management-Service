@@ -1,6 +1,5 @@
 using FinBeat.TaskManagement.Application.Abstractions;
 using FinBeat.TaskManagement.Application.Results;
-using FinBeat.TaskManagement.Application.Tasks;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinBeat.TaskManagement.Application.Tasks.Queries;

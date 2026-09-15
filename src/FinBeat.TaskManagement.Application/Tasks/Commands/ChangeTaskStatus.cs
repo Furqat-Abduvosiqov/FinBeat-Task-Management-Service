@@ -1,6 +1,5 @@
 using FinBeat.TaskManagement.Application.Abstractions;
 using FinBeat.TaskManagement.Application.Results;
-using FinBeat.TaskManagement.Application.Tasks;
 using FinBeat.TaskManagement.Domain.Abstractions;
 using FinBeat.TaskManagement.Domain.Tasks;
 
