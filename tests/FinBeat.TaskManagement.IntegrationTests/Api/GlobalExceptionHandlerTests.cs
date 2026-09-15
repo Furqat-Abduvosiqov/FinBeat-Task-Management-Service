@@ -5,7 +5,6 @@ using FinBeat.TaskManagement.Api;
 using FinBeat.TaskManagement.Infrastructure.Persistence;
 using FinBeat.TaskManagement.IntegrationTests.Persistence.Model;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

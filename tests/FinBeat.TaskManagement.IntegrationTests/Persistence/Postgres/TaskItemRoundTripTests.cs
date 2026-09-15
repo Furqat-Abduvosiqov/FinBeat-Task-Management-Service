@@ -1,6 +1,5 @@
 using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
-using FinBeat.TaskManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 
