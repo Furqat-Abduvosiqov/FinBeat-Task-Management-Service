@@ -4,11 +4,7 @@ using FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
 namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Postgres;
 
 /// <summary>Ready-made <see cref="TaskItem"/> instances for the Postgres persistence tests.</summary>
-/// <remarks>
-/// "Renew passport" is the default title because none of the tests that use it assert on the title
-/// text itself, so naming it once here buries nothing an assertion depends on. A test that does depend
-/// on a specific title or description still passes it explicitly.
-/// </remarks>
+/// <remarks>"Renew passport" is the default title because no test using it asserts on the title text; one that does passes it explicitly.</remarks>
 internal static class TaskItems
 {
     /// <summary>A task titled "Renew passport" with no description.</summary>
