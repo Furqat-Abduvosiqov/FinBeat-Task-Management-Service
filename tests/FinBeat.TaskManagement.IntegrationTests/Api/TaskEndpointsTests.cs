@@ -43,7 +43,7 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
 
         var created = await ReadJsonAsync(response);
         created.GetProperty("title").GetString().ShouldBe("Renew passport");
-        created.GetProperty("status").GetString().ShouldBe(nameof(TaskItemStatus.New));
+        created.GetProperty("status").GetInt32().ShouldBe((int)TaskItemStatus.New);
 
         // The Location header has to lead somewhere, which is what CreatedAtRoute is for.
         response.Headers.Location.ShouldNotBeNull();
@@ -81,17 +81,18 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task A_status_read_from_a_response_can_be_sent_straight_back()
     {
-        // Names in both directions. Bound as numbers, the spelling a client just read would not parse.
+        // Numbers in both directions: a client can send back exactly what it read. What each number
+        // means is in the OpenAPI document, harvested from the enum's own summaries.
         var created = await CreateAsync("Round-trip the status");
-        created.GetProperty("status").GetString().ShouldBe(nameof(TaskItemStatus.New));
+        created.GetProperty("status").GetInt32().ShouldBe((int)TaskItemStatus.New);
 
         var response = await _client.PutAsJsonAsync(
             $"/tasks/{Id(created)}/status",
-            new { status = nameof(TaskItemStatus.InProgress) });
+            new { status = (int)TaskItemStatus.InProgress });
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await ReadJsonAsync(response)).GetProperty("status").GetString()
-            .ShouldBe(nameof(TaskItemStatus.InProgress));
+        (await ReadJsonAsync(response)).GetProperty("status").GetInt32()
+            .ShouldBe((int)TaskItemStatus.InProgress);
     }
 
     [Fact]
@@ -101,13 +102,13 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
 
         var archived = await _client.PutAsJsonAsync(
             $"/tasks/{Id(created)}/status",
-            new { status = nameof(TaskItemStatus.Archived) });
+            new { status = (int)TaskItemStatus.Archived });
 
         archived.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         var response = await _client.PutAsJsonAsync(
             $"/tasks/{Id(created)}/status",
-            new { status = nameof(TaskItemStatus.Completed) });
+            new { status = (int)TaskItemStatus.Completed });
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
 
@@ -198,14 +199,14 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
     {
         var created = await CreateAsync("Stays new");
 
-        var response = await _client.GetAsync($"/tasks?status={nameof(TaskItemStatus.Archived)}");
+        var response = await _client.GetAsync($"/tasks?status={(int)TaskItemStatus.Archived}");
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         var page = await ReadJsonAsync(response);
         var tasks = page.GetProperty("items").EnumerateArray().ToArray();
 
-        tasks.ShouldAllBe(task => task.GetProperty("status").GetString() == nameof(TaskItemStatus.Archived));
+        tasks.ShouldAllBe(task => task.GetProperty("status").GetInt32() == (int)TaskItemStatus.Archived);
         tasks.ShouldNotContain(task => task.GetProperty("id").GetString() == Id(created).ToString());
 
         // The envelope is what lets a client ask for the next page.

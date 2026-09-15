@@ -1,0 +1,111 @@
+name: finbeat-taskmanagement
+
+x-broker: &broker
+  RabbitMq__Host: rabbitmq
+  RabbitMq__Port: "5672"
+  RabbitMq__VHost: /
+  RabbitMq__User: ${RABBITMQ_USER:-guest}
+  RabbitMq__Pass: ${RABBITMQ_PASSWORD:-guest}
+
+x-tracing: &tracing
+  OpenTelemetry__OtlpEndpoint: http://jaeger:4317
+
+x-database: &database
+  ConnectionStrings__TaskManagement: Host=postgres;Port=5432;Database=${POSTGRES_DB:-finbeat_taskmanagement};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+
+services:
+  postgres:
+    image: postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-finbeat_taskmanagement}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-finbeat_taskmanagement}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine@sha256:606d8c0d6b3c18d1da9afc53bc7cdb2a8d5486df91b5a9830e9e07626c9ae281
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${RABBITMQ_PORT:-5672}:5672"
+      - "${BIND_ADDRESS:-127.0.0.1}:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/jaeger:2.21.0@sha256:3d0ac795ff98aa04d1be04311d2dac6c25b4bfc8322dc02e53bc5b170c5018c3
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${JAEGER_UI_PORT:-16686}:16686"
+      - "${BIND_ADDRESS:-127.0.0.1}:${OTLP_GRPC_PORT:-4317}:4317"
+      - "${BIND_ADDRESS:-127.0.0.1}:${OTLP_HTTP_PORT:-4318}:4318"
+    restart: unless-stopped
+
+  migrator:
+    build:
+      context: .
+      dockerfile: docker/migrator.Dockerfile
+    environment:
+      <<: *database
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  listener:
+    build:
+      context: .
+      dockerfile: src/FinBeat.TaskManagement.Listener/Dockerfile
+    environment:
+      <<: [*broker, *tracing]
+      DOTNET_ENVIRONMENT: ${DOTNET_ENVIRONMENT:-Development}
+      Serilog__MinimumLevel__Default: ${LOG_LEVEL:-Information}
+    volumes:
+      - listener-logs:/app/logs
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: src/FinBeat.TaskManagement.Api/Dockerfile
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${API_PORT:-8080}:8080"
+    environment:
+      <<: [*broker, *tracing, *database]
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      Serilog__MinimumLevel__Default: ${LOG_LEVEL:-Information}
+    volumes:
+      - api-logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      listener:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  api-logs:
+  listener-logs:

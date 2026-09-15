@@ -11,7 +11,7 @@ namespace FinBeat.TaskManagement.IntegrationTests.Persistence;
 public sealed class PostgresFixture : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
+        .WithImage(TestImages.PostgreSql)
         .Build();
 
     private NpgsqlDataSource? _dataSource;
@@ -38,7 +38,7 @@ public sealed class PostgresFixture : IAsyncLifetime
     }
 
     /// <summary>Builds a fresh <see cref="ApplicationDbContext"/> against the container.</summary>
-    /// <remarks>A new context per call, so nothing is served from a stale identity map — what a round-trip assertion has to rule out.</remarks>
+    /// <remarks>A new context per call, so nothing is served from a stale identity map - what a round-trip assertion has to rule out.</remarks>
     public ApplicationDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>();

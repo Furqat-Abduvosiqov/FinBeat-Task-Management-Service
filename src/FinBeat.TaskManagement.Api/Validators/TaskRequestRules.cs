@@ -1,40 +1,7 @@
-using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
 using FluentValidation;
 
 namespace FinBeat.TaskManagement.Api.Endpoints.Validation;
-
-/// <summary>Checks a create request before it reaches the domain.</summary>
-internal sealed class CreateTaskRequestValidator : AbstractValidator<CreateTaskRequest>
-{
-    /// <summary>Declares the rules.</summary>
-    public CreateTaskRequestValidator()
-    {
-        RuleFor(request => request.Title).MustBeATaskTitle();
-        RuleFor(request => request.Description).MustBeATaskDescription();
-    }
-}
-
-/// <summary>Checks an update request before it reaches the domain.</summary>
-internal sealed class UpdateTaskDetailsRequestValidator : AbstractValidator<UpdateTaskDetailsRequest>
-{
-    /// <summary>Declares the rules.</summary>
-    public UpdateTaskDetailsRequestValidator()
-    {
-        RuleFor(request => request.Title).MustBeATaskTitle();
-        RuleFor(request => request.Description).MustBeATaskDescription();
-    }
-}
-
-/// <summary>Checks a status-change request before it reaches the domain.</summary>
-internal sealed class ChangeTaskStatusRequestValidator : AbstractValidator<ChangeTaskStatusRequest>
-{
-    /// <summary>Declares the rules.</summary>
-    public ChangeTaskStatusRequestValidator() =>
-        RuleFor(request => request.Status)
-            .IsInEnum()
-            .WithMessage($"A task status must be one of: {string.Join(", ", Enum.GetNames<TaskItemStatus>())}.");
-}
 
 /// <summary>The rules a task title and description obey, so create and update cannot drift apart.</summary>
 /// <remarks>

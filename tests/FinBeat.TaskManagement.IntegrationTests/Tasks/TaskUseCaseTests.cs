@@ -29,7 +29,7 @@ public sealed class TaskUseCaseTests(PostgresFixture fixture)
         result.IsSuccess.ShouldBeTrue();
         result.Value.Title.ShouldBe("Renew passport");
         result.Value.Description.ShouldBe("Before the trip in June");
-        result.Value.Status.ShouldBe(nameof(TaskItemStatus.New));
+        result.Value.Status.ShouldBe(TaskItemStatus.New);
         result.Value.CreatedAt.ShouldBe(result.Value.UpdatedAt);
 
         var stored = await ReadAsync(result.Value.Id);
@@ -41,6 +41,8 @@ public sealed class TaskUseCaseTests(PostgresFixture fixture)
         var created = published.Payload.ShouldBeOfType<TaskCreated>();
         created.TaskId.ShouldBe(result.Value.Id);
         created.Title.ShouldBe("Renew passport");
+        // The event keeps the name: the API is versioned and documented, consumers are not redeployed
+        // with it, and a name survives a renumbering they never hear about.
         created.Status.ShouldBe(nameof(TaskItemStatus.New));
     }
 
@@ -119,7 +121,7 @@ public sealed class TaskUseCaseTests(PostgresFixture fixture)
         result.IsSuccess.ShouldBeTrue();
         result.Value.Items.ShouldContain(task => task.Id == archived);
         result.Value.Items.ShouldNotContain(task => task.Id == excluded.Id);
-        result.Value.Items.ShouldAllBe(task => task.Status == nameof(TaskItemStatus.Archived));
+        result.Value.Items.ShouldAllBe(task => task.Status == TaskItemStatus.Archived);
     }
 
     [Fact]
@@ -221,7 +223,7 @@ public sealed class TaskUseCaseTests(PostgresFixture fixture)
             .HandleAsync(new ChangeTaskStatusCommand(created.Id, TaskItemStatus.InProgress));
 
         result.IsSuccess.ShouldBeTrue();
-        result.Value.Status.ShouldBe(nameof(TaskItemStatus.InProgress));
+        result.Value.Status.ShouldBe(TaskItemStatus.InProgress);
         (await ReadAsync(created.Id)).Status.ShouldBe(TaskItemStatus.InProgress);
 
         var published = publisher.Published.ShouldHaveSingleItem();

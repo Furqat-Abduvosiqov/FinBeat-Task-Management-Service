@@ -55,6 +55,11 @@ public static class DependencyInjection
 
         services.AddMassTransit(bus =>
         {
+            // MassTransit posts usage data to usage-tracking.masstransit.io on startup. A backend
+            // service should talk to its own dependencies and nothing else; this was visible in the
+            // traces as an outbound POST to a third party.
+            bus.DisableUsageTelemetry();
+
             // A publish and the state change that caused it commit together, or neither does.
             bus.AddEntityFrameworkOutbox<ApplicationDbContext>(outbox =>
             {

@@ -27,7 +27,7 @@ public sealed class TaskItemDeleteTests(PostgresFixture fixture)
         var reloaded = await readContext.Tasks.SingleOrDefaultAsync(t => t.Id == task.Id);
         reloaded.ShouldBeNull();
 
-        // The raw count is what tells a hard delete apart from a soft delete behind a query filter — the EF query above would return null either way.
+        // The raw count is what tells a hard delete apart from a soft delete behind a query filter - the EF query above would return null either way.
         await using var command = fixture.DataSource.CreateCommand("SELECT count(*) FROM tasks WHERE id = @id");
         command.Parameters.AddWithValue("id", task.Id.Value);
         var count = (long)(await command.ExecuteScalarAsync())!;

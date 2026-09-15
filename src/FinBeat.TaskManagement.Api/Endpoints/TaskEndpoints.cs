@@ -1,4 +1,5 @@
 using FinBeat.TaskManagement.Api.Endpoints.Validation;
+using FinBeat.TaskManagement.Api.OpenApi;
 using FinBeat.TaskManagement.Application.Results;
 using FinBeat.TaskManagement.Application.Tasks;
 using FinBeat.TaskManagement.Application.Tasks.Commands;
@@ -48,7 +49,13 @@ internal static class TaskEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .WithOpenApi(operation =>
             {
-                Describe(operation, "status", "Return only tasks in this status. Omit for all of them.");
+                // A parameter $refs the documented component, and Swagger UI does not show a $ref target's
+                // description next to the field, so the legend is repeated here where a caller reads it.
+                Describe(
+                    operation,
+                    "status",
+                    "Return only tasks in this status. Omit for all of them.\n\n"
+                        + EnumDocumentation.Describe(typeof(TaskItemStatus)));
                 Describe(operation, "page", "Which page to return, counting from one.");
                 Describe(
                     operation,

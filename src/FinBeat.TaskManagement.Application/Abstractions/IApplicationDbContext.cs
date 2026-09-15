@@ -8,7 +8,7 @@ namespace FinBeat.TaskManagement.Application.Abstractions;
 /// <para>
 /// There is no repository here on purpose. <c>DbContext</c> is already a unit of work and
 /// <c>DbSet</c> is already a repository, so wrapping them adds a second abstraction over the same
-/// thing — and one that ends up a worse query language than the LINQ it hides, as soon as filtering
+/// thing - and one that ends up a worse query language than the LINQ it hides, as soon as filtering
 /// and paging arrive.
 /// </para>
 /// <para>

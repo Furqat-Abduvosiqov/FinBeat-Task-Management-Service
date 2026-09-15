@@ -56,6 +56,9 @@ internal static class Bootstrap
 
         builder.Services.AddMassTransit(bus =>
         {
+            // Same outbound call as the API suppresses, for the same reason.
+            bus.DisableUsageTelemetry();
+
             bus.SetKebabCaseEndpointNameFormatter();
             // Named rather than assembly-scanned: the scan reads exported types only, and these are internal.
             bus.AddConsumer<TaskCreatedConsumer>();

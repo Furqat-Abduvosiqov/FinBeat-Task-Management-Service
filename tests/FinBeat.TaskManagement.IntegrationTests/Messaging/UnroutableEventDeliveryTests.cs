@@ -21,7 +21,7 @@ namespace FinBeat.TaskManagement.IntegrationTests.Messaging;
 public sealed class UnroutableEventDeliveryTests : IAsyncLifetime
 {
     private readonly RabbitMqContainer _broker = new RabbitMqBuilder()
-        .WithImage("rabbitmq:3-alpine")
+        .WithImage(TestImages.RabbitMq)
         .Build();
 
     public Task InitializeAsync() => _broker.StartAsync();

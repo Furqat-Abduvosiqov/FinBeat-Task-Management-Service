@@ -3,6 +3,7 @@ using FinBeat.TaskManagement.Application.Results;
 using FinBeat.TaskManagement.Domain.Abstractions;
 using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinBeat.TaskManagement.Application.Tasks.Commands;
 
@@ -48,7 +49,33 @@ public sealed class CreateTaskHandler(
         context.Tasks.Add(task);
 
         await publisher.PublishRaisedEventsAsync(task, cancellationToken);
-        await context.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // The retrying execution strategy re-sends this INSERT when the first attempt's commit reached
+            // the server but its acknowledgement did not come back - the restart case EnableRetryOnFailure
+            // exists for. The id is assigned in the domain, not by the database, so the replay carries the
+            // same primary key and Postgres rejects it as a unique violation, which is not transient. If a
+            // row now exists under this id, the first attempt committed and nobody else could have produced
+            // that id, so the create is done. AsNoTracking because the failed save left this task tracked as
+            // Added under the same key and a tracking query would resolve to that instance. The SQLSTATE
+            // itself is out of reach here - Application references EF Core and nothing else - so the probe
+            // stands in for 23505, and anything the probe does not explain is rethrown unchanged.
+            var committed = await context.Tasks
+                .AsNoTracking()
+                .FindByIdAsync(task.Id.Value, cancellationToken);
+
+            if (committed is null)
+            {
+                throw;
+            }
+
+            return Result.Success(TaskResponse.From(task));
+        }
 
         return Result.Success(TaskResponse.From(task));
     }
