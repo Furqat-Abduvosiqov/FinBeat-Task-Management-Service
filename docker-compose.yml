@@ -1,11 +1,5 @@
-# Every port and credential below has an inline default, so `docker compose up` works with no .env
-# at all. Copy .env.example to .env only to change one - most often a port already taken by a
-# container you started by hand.
-
 name: finbeat-taskmanagement
 
-# One definition per setting, so the api and the listener cannot drift onto different vhosts or
-# point at different brokers. A service still overrides anything it needs by restating the key.
 x-broker: &broker
   RabbitMq__Host: rabbitmq
   RabbitMq__Port: "5672"
@@ -21,21 +15,16 @@ x-database: &database
 
 services:
   postgres:
-    # Pinned by digest as well as tag: `16-alpine` is repointed on every upstream rebuild, so the
-    # tag alone guarantees a version, not the bytes. ContainerImageTests holds this to one value.
     image: postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-finbeat_taskmanagement}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      # Loopback by default. A published port bypasses the host firewall on Linux, and there is no
-      # authentication anywhere in this stack; BIND_ADDRESS=0.0.0.0 shares it deliberately.
       - "${BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      # The migrator waits on this. Without it, it races the first-run initdb and fails to connect.
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-finbeat_taskmanagement}"]
       interval: 5s
       timeout: 5s
@@ -51,7 +40,6 @@ services:
       - "${BIND_ADDRESS:-127.0.0.1}:${RABBITMQ_PORT:-5672}:5672"
       - "${BIND_ADDRESS:-127.0.0.1}:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
     healthcheck:
-      # check_running is ready for connections; a plain ping answers before the broker will accept them.
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
       interval: 10s
       timeout: 10s
@@ -75,7 +63,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    # Runs once and exits. Anything else would re-run migrations on every restart of the stack.
     restart: "no"
 
   listener:
@@ -85,12 +72,8 @@ services:
     environment:
       <<: [*broker, *tracing]
       DOTNET_ENVIRONMENT: ${DOTNET_ENVIRONMENT:-Development}
-      # Development alone would mean Debug, which is a firehose of EF connection chatter in a
-      # container whose logs you read with `docker compose logs`.
       Serilog__MinimumLevel__Default: ${LOG_LEVEL:-Information}
     volumes:
-      # Console is what `docker compose logs` reads; the rolling file is the other half the
-      # specification offers, and it is only worth keeping if it outlives the container.
       - listener-logs:/app/logs
     depends_on:
       rabbitmq:
@@ -113,24 +96,12 @@ services:
       - api-logs:/app/logs
     depends_on:
       postgres:
-        # Redundant for ordering today and stated anyway: migrator already gates on postgres health
-        # and re-runs on every `up`, so api never reaches a server that is not accepting connections.
-        # Saying it locally is what survives migrator being removed, made `required: false`, or run
-        # out of band. It buys nothing against a bounced server - `compose restart postgres` leaves
-        # api running and untouched, which is what the retrying strategy on ApplicationDbContext
-        # covers.
         condition: service_healthy
       migrator:
-        # The schema exists before the first request, and no host migrates on boot, so two instances
-        # cannot race over it. This dev stack still hands api the owner credential; a deployment that
-        # wants DDL and DML separated gives api its own non-owning role.
         condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
       listener:
-        # A head start, not a guarantee. `service_started` is satisfied when the container's process
-        # exists, not when MassTransit has declared the four consumer queues, so an event published
-        # in that gap waits in the `unroutable` queue rather than being dropped.
         condition: service_started
     restart: unless-stopped
 
