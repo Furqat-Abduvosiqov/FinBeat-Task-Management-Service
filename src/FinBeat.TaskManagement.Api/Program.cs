@@ -1,19 +1,22 @@
-using FinBeat.TaskManagement.Infrastructure;
+using FinBeat.TaskManagement.Api;
+using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = Bootstrap.CreateBootstrapLogger();
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddInfrastructure(builder.Configuration);
-
-var app = builder.Build();
-
-if (app.Environment.IsDevelopment())
+try
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    WebApplication
+        .CreateBuilder(args)
+        .AddApiHost()
+        .Build()
+        .UseApiPipeline()
+        .Run();
 }
-
-app.UseHttpsRedirection();
-
-app.Run();
+catch (Exception exception)
+{
+    Log.Fatal(exception, "Api host terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

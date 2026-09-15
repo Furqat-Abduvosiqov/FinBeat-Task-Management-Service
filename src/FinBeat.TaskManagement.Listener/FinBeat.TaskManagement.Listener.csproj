@@ -8,6 +8,16 @@
         <PackageReference Include="Microsoft.Extensions.Hosting"/>
     </ItemGroup>
 
+    <!-- Observability. Serilog.AspNetCore despite the name - it carries AddSerilog for a non-Web host. -->
+    <ItemGroup>
+        <PackageReference Include="Serilog.AspNetCore"/>
+        <PackageReference Include="Serilog.Sinks.Console"/>
+        <PackageReference Include="Serilog.Sinks.File"/>
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting"/>
+        <PackageReference Include="OpenTelemetry.Instrumentation.Http"/>
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol"/>
+    </ItemGroup>
+
     <!--
         Contracts and nothing else. This is a separate deployable, so the wire format is all it may
         share with the API - give it Application and it becomes the same monolith deployed twice.
