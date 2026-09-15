@@ -61,7 +61,7 @@ public sealed class ModelFixture : IDisposable
         new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["ConnectionStrings:" + DependencyInjection.ConnectionStringName] = connectionString
+                [$"{DatabaseOptions.SectionName}:{DatabaseOptions.ConnectionStringName}"] = connectionString
             })
             .Build();
 

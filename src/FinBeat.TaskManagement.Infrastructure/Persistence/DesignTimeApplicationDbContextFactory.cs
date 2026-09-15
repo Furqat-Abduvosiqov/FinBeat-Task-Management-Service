@@ -23,7 +23,7 @@ public sealed class DesignTimeApplicationDbContextFactory : IDesignTimeDbContext
             .AddEnvironmentVariables()
             .Build();
 
-        var connectionString = configuration.GetConnectionString(DependencyInjection.ConnectionStringName);
+        var connectionString = configuration.GetConnectionString(DatabaseOptions.ConnectionStringName);
 
         if (string.IsNullOrWhiteSpace(connectionString))
         {

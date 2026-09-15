@@ -5,16 +5,14 @@ using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace FinBeat.TaskManagement.Infrastructure;
 
 /// <summary>Wires the persistence and messaging adapters into a service collection.</summary>
 public static class DependencyInjection
 {
-    /// <summary>The connection string name, read from <c>ConnectionStrings:TaskManagement</c>.</summary>
-    public const string ConnectionStringName = "TaskManagement";
-
-    /// <summary>The configuration section holding the RabbitMQ connection settings.</summary>
+    /// <summary>The configuration section bound to <see cref="RabbitMqTransportOptions"/>.</summary>
     public const string RabbitMqSectionName = "RabbitMq";
 
     /// <summary>Registers the database, the message bus, and the ports the application layer declares.</summary>
@@ -22,29 +20,21 @@ public static class DependencyInjection
     /// <param name="configuration">The configuration the connection settings are read from.</param>
     /// <returns>The same <paramref name="services"/> instance, for chaining.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="services"/> or <paramref name="configuration"/> is null.</exception>
-    /// <exception cref="InvalidOperationException">No connection string is configured under <see cref="ConnectionStringName"/>.</exception>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var connectionString = configuration.GetConnectionString(ConnectionStringName);
+        services.AddOptions<DatabaseOptions>()
+            .Bind(configuration.GetSection(DatabaseOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
-        // Fail at startup with the missing key named, rather than a null reference from inside Npgsql
-        // on whichever request happens to run the first query.
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            throw new InvalidOperationException(
-                $"No connection string configured for '{ConnectionStringName}'. Set "
-                + $"'ConnectionStrings:{ConnectionStringName}' in configuration, or the "
-                + $"'ConnectionStrings__{ConnectionStringName}' environment variable.");
-        }
-
-        services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddDbContext<ApplicationDbContext>((provider, options) =>
+            options.UseNpgsql(provider.GetRequiredService<IOptions<DatabaseOptions>>().Value.TaskManagement));
 
         // Resolves the context AddDbContext registered rather than constructing a second one.
-        services.AddScoped<IApplicationDbContext>(serviceProvider =>
-            serviceProvider.GetRequiredService<ApplicationDbContext>());
+        services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
 
         services.AddMessaging(configuration);
 
@@ -53,6 +43,10 @@ public static class DependencyInjection
 
     private static void AddMessaging(this IServiceCollection services, IConfiguration configuration)
     {
+        // MassTransit reads the host, port, virtual host and credentials from these options and already
+        // defaults them to localhost:5672 guest/guest, so UsingRabbitMq needs no Host call of its own.
+        services.AddOptions<RabbitMqTransportOptions>().Bind(configuration.GetSection(RabbitMqSectionName));
+
         services.AddMassTransit(bus =>
         {
             // The outbox writes a publish into ApplicationDbContext inside the caller's transaction and
@@ -65,22 +59,7 @@ public static class DependencyInjection
             });
 
             bus.SetKebabCaseEndpointNameFormatter();
-
-            bus.UsingRabbitMq((context, rabbit) =>
-            {
-                var options = configuration.GetSection(RabbitMqSectionName);
-
-                rabbit.Host(
-                    options["Host"] ?? "localhost",
-                    options["VirtualHost"] ?? "/",
-                    host =>
-                    {
-                        host.Username(options["Username"] ?? "guest");
-                        host.Password(options["Password"] ?? "guest");
-                    });
-
-                rabbit.ConfigureEndpoints(context);
-            });
+            bus.UsingRabbitMq((context, rabbit) => rabbit.ConfigureEndpoints(context));
         });
 
         services.AddScoped<IIntegrationEventPublisher, MassTransitIntegrationEventPublisher>();
