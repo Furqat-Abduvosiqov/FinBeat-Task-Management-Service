@@ -9,7 +9,7 @@ namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Postgres;
 public sealed class TaskItemConstraintTests(PostgresFixture fixture)
 {
     [Fact]
-    public async Task A_title_longer_than_the_domain_allows_is_rejected_by_the_column_itself()
+    public async Task A_title_wider_than_the_column_is_rejected_by_postgresql()
     {
         await using var command = Insert(title: new string('a', TaskTitle.MaxLength + 1), status: 1);
 
@@ -19,11 +19,14 @@ public sealed class TaskItemConstraintTests(PostgresFixture fixture)
         exception.SqlState.ShouldBe("22001");
     }
 
-    [Fact]
-    public async Task A_status_outside_the_declared_range_is_rejected_by_the_check_constraint()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(5)]
+    public async Task A_status_outside_the_declared_range_is_rejected_by_the_check_constraint(int status)
     {
-        // 0 specifically: TaskItemStatus has no zero member, so this is the value a default-initialised int would produce.
-        await using var command = Insert(title: "Renew passport", status: 0);
+        // Both ends: 0 is below New and is what a default-initialised int would carry, 5 is above
+        // Archived. A one-sided constraint such as "status > 0" passes the first and fails the second.
+        await using var command = Insert(title: "Renew passport", status: status);
 
         var exception = await Should.ThrowAsync<PostgresException>(() => command.ExecuteNonQueryAsync());
 
@@ -34,6 +37,12 @@ public sealed class TaskItemConstraintTests(PostgresFixture fixture)
 
     // Bypasses EF and the domain entirely: the point is to prove PostgreSQL enforces this itself,
     // not just EF's model facets.
+    //
+    // Note the column and TaskTitle do not measure length the same way. string.Length counts UTF-16
+    // code units; varchar(200) counts characters, and a non-BMP character is two code units but one
+    // character. So the domain is always at least as strict as the column, never the other way round:
+    // nothing TaskTitle accepts can be truncated on insert. The reverse is possible - 101 emoji are
+    // rejected by TaskTitle but would fit the column - which is a domain question, not a storage one.
     private NpgsqlCommand Insert(string title, int status)
     {
         var command = fixture.DataSource.CreateCommand("""

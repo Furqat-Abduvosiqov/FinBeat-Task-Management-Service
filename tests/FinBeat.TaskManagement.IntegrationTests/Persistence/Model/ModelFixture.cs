@@ -2,7 +2,6 @@ using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Infrastructure;
 using FinBeat.TaskManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,7 +27,6 @@ public sealed class ModelFixture : IDisposable
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         Model = context.Model;
-        DesignTimeModel = context.GetService<IDesignTimeModel>().Model;
         TaskEntityType = Model.FindEntityType(typeof(TaskItem))
             ?? throw new InvalidOperationException($"{nameof(TaskItem)} is not part of the model.");
         TaskTable = StoreObjectIdentifier.Create(TaskEntityType, StoreObjectType.Table)
@@ -40,10 +38,6 @@ public sealed class ModelFixture : IDisposable
 
     /// <summary>The runtime EF Core model, built through the same path the application uses.</summary>
     public IModel Model { get; }
-
-    /// <summary>The design-time model the same context produces.</summary>
-    /// <remarks>Not the same object as <see cref="Model"/>: EF strips design-time-only annotations from the runtime model.</remarks>
-    public IModel DesignTimeModel { get; }
 
     /// <summary><see cref="TaskItem"/>'s entity type within <see cref="Model"/>.</summary>
     public IEntityType TaskEntityType { get; }

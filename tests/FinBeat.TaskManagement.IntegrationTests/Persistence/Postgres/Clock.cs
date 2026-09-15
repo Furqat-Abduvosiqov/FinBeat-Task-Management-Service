@@ -5,8 +5,9 @@ namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Postgres;
 /// <summary>The clock every Postgres round-trip test starts from.</summary>
 internal static class Clock
 {
-    // A whole second, not DateTimeOffset.UnixEpoch: that would zero the UUIDv7 timestamp bytes and
-    // mask the microsecond precision loss a real clock value would hit on round trip.
+    // Microsecond-aligned, because timestamptz stores microseconds while .NET keeps 100-nanosecond
+    // ticks: an instant with finer precision would not survive the round trip and equality assertions
+    // on it would flake.
     private static readonly DateTimeOffset Instant = new(2026, 3, 14, 9, 30, 0, TimeSpan.Zero);
 
     /// <summary>A fresh <see cref="FakeTimeProvider"/> pinned at a realistic instant, advancing a second on every read.</summary>
