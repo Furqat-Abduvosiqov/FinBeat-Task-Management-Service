@@ -1,0 +1,23 @@
+# Build output first: copying a host bin/ into the image is how a stale DLL ships.
+**/bin/
+**/obj/
+**/logs/
+
+.git/
+.gitignore
+.idea/
+.vs/
+.vscode/
+.claude/
+.superpowers/
+.config/dotnet-tools.json.user
+
+# Neither host image builds or runs these.
+tests/
+sql/
+*.md
+*.sln.DotSettings.user
+**/*.user
+
+# Never let a local secret reach a layer.
+.env

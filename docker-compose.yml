@@ -1,0 +1,109 @@
+# Every port and credential below has an inline default, so `docker compose up` works with no .env
+# at all. Copy .env.example to .env only to change one - most often a port already taken by a
+# container you started by hand.
+
+name: finbeat-taskmanagement
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-finbeat_taskmanagement}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # The migrator waits on this. Without it, it races the first-run initdb and fails to connect.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-finbeat_taskmanagement}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    healthcheck:
+      # check_running is ready for connections; a plain ping answers before the broker will accept them.
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/jaeger:2.21.0
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686"
+      - "${OTLP_GRPC_PORT:-4317}:4317"
+      - "${OTLP_HTTP_PORT:-4318}:4318"
+    restart: unless-stopped
+
+  migrator:
+    build:
+      context: .
+      dockerfile: docker/migrator.Dockerfile
+    environment:
+      ConnectionStrings__TaskManagement: Host=postgres;Port=5432;Database=${POSTGRES_DB:-finbeat_taskmanagement};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Runs once and exits. Anything else would re-run migrations on every restart of the stack.
+    restart: "no"
+
+  listener:
+    build:
+      context: .
+      dockerfile: src/FinBeat.TaskManagement.Listener/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: ${DOTNET_ENVIRONMENT:-Development}
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Port: "5672"
+      RabbitMq__VHost: /
+      RabbitMq__User: ${RABBITMQ_USER:-guest}
+      RabbitMq__Pass: ${RABBITMQ_PASSWORD:-guest}
+      OpenTelemetry__OtlpEndpoint: http://jaeger:4317
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: src/FinBeat.TaskManagement.Api/Dockerfile
+    ports:
+      - "${API_PORT:-8080}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ConnectionStrings__TaskManagement: Host=postgres;Port=5432;Database=${POSTGRES_DB:-finbeat_taskmanagement};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Port: "5672"
+      RabbitMq__VHost: /
+      RabbitMq__User: ${RABBITMQ_USER:-guest}
+      RabbitMq__Pass: ${RABBITMQ_PASSWORD:-guest}
+      OpenTelemetry__OtlpEndpoint: http://jaeger:4317
+    depends_on:
+      migrator:
+        # The schema exists before the first request, without the host ever holding DDL rights.
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      listener:
+        # Consumer queues are declared by the listener. Starting it first means the API's earliest
+        # events route to a consumer rather than to the unroutable queue.
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

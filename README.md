@@ -22,10 +22,49 @@ the API, which is why it references `Contracts` and nothing else.
 
 ## Prerequisites
 
-- .NET SDK 8.0.4xx (pinned in `global.json`)
-- Docker, for PostgreSQL, RabbitMQ and the container-backed tests
+- Docker, with Compose v2 - enough on its own to run the whole stack
+- .NET SDK 8.0.4xx (pinned in `global.json`) - only to run the hosts from source, or the tests
 
 ## Running it
+
+### Everything in containers
+
+```bash
+docker compose up -d --build
+```
+
+| | |
+|---|---|
+| API | http://localhost:8080 — Swagger at `/swagger` |
+| RabbitMQ management | http://localhost:15672 — `guest` / `guest` |
+| Jaeger | http://localhost:16686 |
+
+Compose starts them in the order the system needs rather than all at once:
+
+1. `postgres`, `rabbitmq` and `jaeger` come up, the first two with health checks.
+2. `migrator` waits for PostgreSQL to be **healthy**, applies the migrations and exits. Schema
+   changes stay a deploy step: no host migrates on boot, so none needs DDL rights at runtime and
+   two instances cannot race each other.
+3. `listener` waits for RabbitMQ, and declares the consumer queues.
+4. `api` waits for the migrator to have **exited successfully** and for the listener to have
+   started — so the schema is there before the first request, and the earliest events it publishes
+   reach a bound queue rather than the `unroutable` one.
+
+Every port and credential has a default compiled into `docker-compose.yml`, so no `.env` is needed.
+Copy `.env.example` to `.env` to change one — most often a port already taken by something you
+started by hand.
+
+```bash
+docker compose logs -f api listener   # both hosts also write a rolling file to /app/logs
+docker compose down                   # add -v to drop the database volume too
+```
+
+The two host images publish framework-dependent onto the runtime images and run as the non-root
+`app` user. The listener's base is `runtime` rather than `aspnet`: it is a worker that references no
+web framework. `migrator` is the odd one out at about 1.6 GB, because `dotnet ef` needs the SDK —
+which is the reason it is a container that exits rather than anything the running hosts carry.
+
+## Running the hosts from source
 
 ### 1. Start PostgreSQL, RabbitMQ and Jaeger
 
@@ -169,8 +208,6 @@ docker exec finbeat-postgres psql -U postgres -d finbeat_taskmanagement \
 
 ## Not included
 
-- **Dockerfile and docker compose.** The assignment lists them as optional; the `docker run`
-  commands above are what this repository has been run with.
 - **Task ownership.** The assignment says "a user's tasks", but there is no authentication here and
   no `UserId` on the aggregate, so every task is visible to every caller. Adding it means choosing
   where identity comes from, which is a decision rather than an omission.
