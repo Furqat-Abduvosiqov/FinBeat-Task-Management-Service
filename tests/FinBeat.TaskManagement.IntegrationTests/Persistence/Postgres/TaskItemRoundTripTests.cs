@@ -42,8 +42,8 @@ public sealed class TaskItemRoundTripTests(PostgresFixture fixture)
         await using var readContext = fixture.CreateContext();
         var reloaded = await readContext.Tasks.SingleAsync(t => t.Id == task.Id);
 
-        // Reference identity, not value equality: this fails on a null Description, and it fails just
-        // as surely if Create ever stopped returning the shared None instance.
+        // Reference identity, not value equality: fails on a null Description or if Create stopped
+        // returning the shared None instance.
         reloaded.Description.ShouldBeSameAs(TaskDescription.None);
     }
 
@@ -59,9 +59,8 @@ public sealed class TaskItemRoundTripTests(PostgresFixture fixture)
         await using var command = fixture.DataSource.CreateCommand("SELECT status FROM tasks WHERE id = @id");
         command.Parameters.AddWithValue("id", task.Id.Value);
 
-        // Read raw, without EF, so the number in the column is asserted rather than whatever the
-        // converter would hand back. 2 is InProgress - the explicit numbering on TaskItemStatus is the
-        // persistence contract, so a reordering of its members has to show up here.
+        // Read raw, without EF: 2 is InProgress, and TaskItemStatus's explicit numbering is a
+        // persistence contract that a member reorder must break here.
         var status = await command.ExecuteScalarAsync();
         status.ShouldBe(2);
     }
