@@ -99,10 +99,12 @@ services:
       OpenTelemetry__OtlpEndpoint: http://jaeger:4317
     depends_on:
       postgres:
-        # Stated even though migrator already gates on it: this is what compose reads when only
-        # postgres is recreated, and it keeps the API from being started against a server that is
-        # not accepting connections yet. It does NOT rescue an already-running API from a restart -
-        # that is what the retrying execution strategy on ApplicationDbContext is for.
+        # Redundant for ordering today and stated anyway: migrator already gates on postgres health
+        # and re-runs on every `up`, so api never reaches a server that is not accepting connections.
+        # Saying it locally is what survives migrator being removed, made `required: false`, or run
+        # out of band. It buys nothing against a bounced server - `compose restart postgres` leaves
+        # api running and untouched, which is what the retrying strategy on ApplicationDbContext
+        # covers.
         condition: service_healthy
       migrator:
         # The schema exists before the first request, without the host ever holding DDL rights.
