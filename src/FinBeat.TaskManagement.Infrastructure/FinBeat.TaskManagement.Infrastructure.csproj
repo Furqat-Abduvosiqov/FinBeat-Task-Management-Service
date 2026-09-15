@@ -34,12 +34,14 @@
     </ItemGroup>
 
     <!--
-        Domain named explicitly even though Application already brings it: the persistence model binds
-        directly to TaskItem and its value objects, and that should not depend on Application keeping
-        its own reference. ProjectReferenceTests allows it.
+        Domain and Contracts are named explicitly even though Application already brings both: the
+        persistence model binds directly to TaskItem and its value objects, and the publish topology
+        binds directly to the contracts. Neither should depend on Application keeping its own
+        reference. ProjectReferenceTests allows both.
     -->
     <ItemGroup>
         <ProjectReference Include="..\FinBeat.TaskManagement.Application\FinBeat.TaskManagement.Application.csproj" />
+        <ProjectReference Include="..\FinBeat.TaskManagement.Contracts\FinBeat.TaskManagement.Contracts.csproj" />
         <ProjectReference Include="..\FinBeat.TaskManagement.Domain\FinBeat.TaskManagement.Domain.csproj" />
     </ItemGroup>
 

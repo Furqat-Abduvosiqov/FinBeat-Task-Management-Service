@@ -6,18 +6,13 @@ using Microsoft.EntityFrameworkCore;
 namespace FinBeat.TaskManagement.Infrastructure.Persistence;
 
 /// <summary>The EF Core <see cref="DbContext"/> this application persists through.</summary>
-public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
+/// <param name="options">The context options.</param>
+public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+    : DbContext(options), IApplicationDbContext
 {
     /// <summary>The table EF records applied migrations in.</summary>
     /// <remarks>Named explicitly because EF names the default explicitly too, at a configuration source the naming convention cannot override - so the table would stay <c>__EFMigrationsHistory</c> while its own columns became <c>migration_id</c> and <c>product_version</c>.</remarks>
     public const string MigrationsHistoryTableName = "__ef_migrations_history";
-
-    /// <summary>Creates the context.</summary>
-    /// <param name="options">The context options.</param>
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-        : base(options)
-    {
-    }
 
     /// <summary>The tasks. This property name is what names the table <c>tasks</c>.</summary>
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
@@ -26,8 +21,6 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     /// <remarks>Applied here so no caller that builds options can leave it out.</remarks>
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        ArgumentNullException.ThrowIfNull(optionsBuilder);
-
         optionsBuilder.UseSnakeCaseNamingConvention();
         optionsBuilder.UseNpgsql(npgsql => npgsql.MigrationsHistoryTable(MigrationsHistoryTableName));
 
@@ -37,8 +30,6 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        ArgumentNullException.ThrowIfNull(modelBuilder);
-
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
         // MassTransit's transactional outbox. These tables have to live in this context, because that

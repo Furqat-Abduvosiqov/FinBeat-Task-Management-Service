@@ -35,15 +35,24 @@ internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
             .HasMaxLength(TaskDescription.MaxLength)
             .IsRequired();
 
-        builder.Property(task => task.Status).IsRequired();
-        builder.Property(task => task.CreatedAt).IsRequired();
-        builder.Property(task => task.UpdatedAt).IsRequired();
-
         var declaredStatuses = string.Join(", ", Enum.GetValues<TaskItemStatus>().Select(status => (int)status));
 
         builder.ToTable(table =>
             table.HasCheckConstraint("ck_tasks_status", $"status IN ({declaredStatuses})"));
 
         builder.HasIndex(task => new { task.Status, task.CreatedAt });
+
+        // The unfiltered page. The composite above leads with status, so it cannot answer a query
+        // that asks for every status in creation order - that would sort the whole table per page.
+        builder.HasIndex(task => new { task.CreatedAt, task.Id });
+
+        // PostgreSQL's own row version. Without it two requests can load the same task, both save,
+        // and the last write wins while both events still reach the outbox - leaving a consumer told
+        // of a change the row never kept.
+        //
+        // A shadow property rather than UseXminAsConcurrencyToken, which Npgsql 8 marks obsolete.
+        // Its migration adds no DDL, because xmin is a system column every table already has; the
+        // migration exists only so the model snapshot stays in step.
+        builder.Property<uint>("xmin").IsRowVersion();
     }
 }

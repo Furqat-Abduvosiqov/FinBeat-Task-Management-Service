@@ -8,7 +8,7 @@ using Shouldly;
 
 namespace FinBeat.TaskManagement.UnitTests.Tasks;
 
-public class TaskItemTests
+public sealed class TaskItemTests
 {
     private static TaskTitle Title => TaskTitle.Create("Buy milk");
 
@@ -76,11 +76,17 @@ public class TaskItemTests
         var newTitle = TaskTitle.Create("Buy oat milk");
         var newDescription = TaskDescription.Create("Unsweetened");
 
+        // Same guard as Create. mutatedAt is the instant the mutation must stamp; AutoAdvanceAmount
+        // makes any SECOND read of the clock return a different one, so reading it again inside
+        // UpdateDetails can no longer leave UpdatedAt and OccurredOnUtc agreeing by accident.
+        var mutatedAt = clock.GetUtcNow();
+        clock.AutoAdvanceAmount = TimeSpan.FromSeconds(1);
+
         task.UpdateDetails(newTitle, newDescription, clock);
 
         task.Title.ShouldBe(newTitle);
         task.Description.ShouldBe(newDescription);
-        task.UpdatedAt.ShouldBe(clock.GetUtcNow());
+        task.UpdatedAt.ShouldBe(mutatedAt);
         task.CreatedAt.ShouldBe(createdAt);
 
         var domainEvent = SingleEvent<TaskItemDetailsUpdatedDomainEvent>(task);
@@ -160,10 +166,15 @@ public class TaskItemTests
         task.ClearDomainEvents();
 
         clock.Advance(TimeSpan.FromMinutes(30));
+
+        // Same guard as Create: AutoAdvanceAmount makes a second read of the clock detectable.
+        var mutatedAt = clock.GetUtcNow();
+        clock.AutoAdvanceAmount = TimeSpan.FromSeconds(1);
+
         task.ChangeStatus(TaskItemStatus.InProgress, clock);
 
         task.Status.ShouldBe(TaskItemStatus.InProgress);
-        task.UpdatedAt.ShouldBe(clock.GetUtcNow());
+        task.UpdatedAt.ShouldBe(mutatedAt);
 
         var domainEvent = SingleEvent<TaskItemStatusChangedDomainEvent>(task);
         domainEvent.TaskId.ShouldBe(task.Id);

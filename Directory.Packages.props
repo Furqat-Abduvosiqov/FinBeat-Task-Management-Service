@@ -7,7 +7,25 @@
   <ItemGroup>
     <!-- API -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="8.0.31" />
-    <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <!--
+      8.1.4, not 6.6.2, because the two halves of Swagger have to agree on the spec version.
+      Microsoft.AspNetCore.OpenApi 8.0.31 pins Microsoft.OpenApi 1.6.30, and from 1.6.23 that
+      serialiser stamps documents "openapi": "3.0.4" where it used to write "3.0.1". The swagger-ui
+      bundled up to Swashbuckle 7.2.0 tests that field with ^3\.0\.([0123])(?:-rc[012])?$, so a
+      perfectly valid 3.0.4 document reads as neither OpenAPI 3 nor Swagger 2 and the page renders
+      nothing but "The provided definition does not specify a valid version field". 7.3.0 widened the
+      pattern to ^3\.0\.(?:[1-9]\d*|0) and is the lowest version that works; 8.1.4 is the newest that
+      still builds against Microsoft.OpenApi 1.x, which is what OpenApiConventions and
+      StatusParameterFilter are written against - 10.x moves to 2.0 and drops IOpenApiAny and
+      OpenApiString. Still MIT.
+    -->
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="8.1.4" />
+    <!--
+      Request validation at the API edge. Apache-2.0 on 12.1.1, checked against the nuspec rather
+      than assumed - two packages in this file already moved licence on a version bump.
+    -->
+    <PackageVersion Include="FluentValidation" Version="12.1.1" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
 
     <!-- Listener -->
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
@@ -68,12 +86,16 @@
 
     <!-- Integration tests: a throwaway PostgreSQL, and configuration to drive AddInfrastructure. -->
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.1.0" />
+    <PackageVersion Include="Testcontainers.RabbitMq" Version="4.1.0" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     <!-- An in-memory server, so the Api pipeline is exercised end to end without binding a port. -->
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="8.0.31" />
 
     <!-- Observability: the specification asks for logging to console or to a text file. Both here. -->
     <PackageVersion Include="Serilog.AspNetCore" Version="8.0.3" />
+    <!-- The Listener is a worker: Serilog.AspNetCore would frameworkReference Microsoft.AspNetCore.App for an AddSerilog that actually lives in Extensions.Hosting. -->
+    <PackageVersion Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+    <PackageVersion Include="Serilog.Settings.Configuration" Version="8.0.4" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
 

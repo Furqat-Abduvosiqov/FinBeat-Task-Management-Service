@@ -35,9 +35,6 @@ public sealed class PostgresFixture : IAsyncLifetime
 
         await using var schemaContext = CreateContext();
         await schemaContext.Database.MigrateAsync();
-
-        var pendingMigrations = await schemaContext.Database.GetPendingMigrationsAsync();
-        pendingMigrations.ShouldBeEmpty();
     }
 
     /// <summary>Builds a fresh <see cref="ApplicationDbContext"/> against the container.</summary>

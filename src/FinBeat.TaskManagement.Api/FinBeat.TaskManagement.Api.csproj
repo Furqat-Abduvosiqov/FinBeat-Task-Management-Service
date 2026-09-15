@@ -3,6 +3,8 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.OpenApi"/>
         <PackageReference Include="Swashbuckle.AspNetCore"/>
+        <PackageReference Include="FluentValidation"/>
+        <PackageReference Include="FluentValidation.DependencyInjectionExtensions"/>
     </ItemGroup>
 
     <!-- Observability: Serilog logging and OpenTelemetry tracing. -->

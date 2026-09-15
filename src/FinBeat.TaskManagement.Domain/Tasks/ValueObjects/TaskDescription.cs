@@ -20,9 +20,6 @@ public sealed record TaskDescription
     /// <summary>The trimmed description, empty when there is none.</summary>
     public string Value { get; }
 
-    /// <summary>Whether there is no description text.</summary>
-    public bool IsEmpty => Value.Length == 0;
-
     /// <summary>Trims and validates a description. Null or whitespace gives <see cref="None"/>.</summary>
     /// <exception cref="InvalidTaskDescriptionException">Longer than <see cref="MaxLength"/> once trimmed.</exception>
     public static TaskDescription Create(string? value)

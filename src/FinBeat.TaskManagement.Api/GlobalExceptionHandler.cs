@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace FinBeat.TaskManagement.Api;
 
@@ -14,7 +15,12 @@ internal sealed class GlobalExceptionHandler(IProblemDetailsService problemDetai
         Exception exception,
         CancellationToken cancellationToken)
     {
-        httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        // A body the model binder could not read is the caller's mistake, and the framework has
+        // already decided which 4xx says so. Everything else is ours, and is a 500.
+        var malformedRequest = exception as BadHttpRequestException;
+        var statusCode = malformedRequest?.StatusCode ?? StatusCodes.Status500InternalServerError;
+
+        httpContext.Response.StatusCode = statusCode;
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
@@ -22,9 +28,11 @@ internal sealed class GlobalExceptionHandler(IProblemDetailsService problemDetai
             Exception = exception,
             ProblemDetails = new ProblemDetails
             {
-                Status = StatusCodes.Status500InternalServerError,
-                Title = "Internal Server Error",
-                Detail = "An unexpected error occurred while processing the request.",
+                Status = statusCode,
+                Title = ReasonPhrases.GetReasonPhrase(statusCode),
+                Detail = malformedRequest is null
+                    ? "An unexpected error occurred while processing the request."
+                    : "The request could not be read.",
                 Extensions = { ["traceId"] = Activity.Current?.Id ?? httpContext.TraceIdentifier }
             }
         });

@@ -60,7 +60,8 @@ namespace FinBeat.TaskManagement.Infrastructure.Persistence.Migrations
                     description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
                     status = table.Column<int>(type: "integer", nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -141,6 +142,11 @@ namespace FinBeat.TaskManagement.Infrastructure.Persistence.Migrations
                 name: "ix_outbox_state_created",
                 table: "outbox_state",
                 column: "created");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tasks_created_at_id",
+                table: "tasks",
+                columns: new[] { "created_at", "id" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_tasks_status_created_at",

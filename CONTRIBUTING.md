@@ -1,14 +1,5 @@
 # Contributing
 
-## One-time setup after cloning
-
-```bash
-git config core.hooksPath .githooks
-```
-
-`core.hooksPath` is a per-clone setting and cannot be committed, so every clone has to run this
-once. Without it the hooks in `.githooks/` are inert.
-
 ## Commit authorship
 
 **Commit messages must not attribute authorship to an AI assistant.** No `Co-Authored-By: Claude`,
@@ -20,8 +11,8 @@ runs `git commit` has read the change, understands it, and answers for it in rev
 helped produce the diff is no more part of the authorship record than the IDE, the compiler, or the
 documentation that was consulted along the way.
 
-This is enforced by `.githooks/commit-msg`, which rejects the commit and prints the offending lines.
-Do not route around it with `git commit --no-verify`.
+Nothing enforces this automatically. The `.githooks/commit-msg` hook that used to reject such
+commits was removed in `645f140`, so the rule now rests on review.
 
 ## Commit messages
 
@@ -38,10 +29,11 @@ Types in use here: `feat`, `fix`, `refactor`, `test`, `build`, `chore`, `docs`, 
 
 Enforced by the build rather than by review:
 
-- `Directory.Build.props` sets `TreatWarningsAsErrors`, `EnforceCodeStyleInBuild` and
-  `GenerateDocumentationFile`. A missing XML `<summary>` on a public member in `src/` is a **build
-  error** (CS1591), as is any style rule violation — `.editorconfig` rules carry `warning` severity
-  deliberately, because a rule left at `suggestion` is IDE-only and can never fail a build.
+- `Directory.Build.props` sets `GenerateDocumentationFile`, so a missing XML `<summary>` on a public
+  member in `src/` is a **warning** (CS1591). It is not an error: this repository has no
+  `TreatWarningsAsErrors`, no `EnforceCodeStyleInBuild` and no `.editorconfig`, so a zero-warning
+  build is a convention whoever runs it upholds, not something the build can fail on. Keep it at
+  zero regardless — every commit here states its warning count.
 - Analyzer suppressions are scoped to the specific file that needs them, never applied repo-wide.
 - `Directory.Packages.props` owns every package version (central package management).
   `PackageReference` elements carry no `Version=` attribute.
@@ -51,7 +43,7 @@ Enforced by the build rather than by review:
 
 `FinBeat.TaskManagement.Domain` must depend on **nothing** — zero `PackageReference`, zero
 `ProjectReference`, base class library only. This is asserted by tests in
-`tests/FinBeat.TaskManagement.UnitTests/Architecture/`, which read the `.csproj` files directly so
+`tests/FinBeat.TaskManagement.ArchitectureTests/`, which read the `.csproj` files directly so
 the rule holds even while a layer is still empty.
 
 The domain never reads the ambient clock. Time arrives through a `TimeProvider` parameter, which is

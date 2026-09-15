@@ -4,7 +4,7 @@ using Shouldly;
 
 namespace FinBeat.TaskManagement.UnitTests.Tasks;
 
-public class TaskTitleTests
+public sealed class TaskTitleTests
 {
     [Theory]
     [InlineData(null)]

@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinBeat.TaskManagement.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260915082756_InitialCreate")]
+    [Migration("20260915120345_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -55,8 +55,17 @@ namespace FinBeat.TaskManagement.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_tasks");
+
+                    b.HasIndex("CreatedAt", "Id")
+                        .HasDatabaseName("ix_tasks_created_at_id");
 
                     b.HasIndex("Status", "CreatedAt")
                         .HasDatabaseName("ix_tasks_status_created_at");

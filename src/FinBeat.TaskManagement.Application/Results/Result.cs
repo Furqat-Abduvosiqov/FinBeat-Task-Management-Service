@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace FinBeat.TaskManagement.Application.Results;
 
 /// <summary>The outcome of a use case: success, or one <see cref="Results.Error"/> saying why not.</summary>
@@ -11,9 +13,11 @@ public class Result
     private protected Result(Error? error) => Error = error;
 
     /// <summary>Whether the operation succeeded.</summary>
+    [MemberNotNullWhen(false, nameof(Error))]
     public bool IsSuccess => Error is null;
 
     /// <summary>Whether the operation failed.</summary>
+    [MemberNotNullWhen(true, nameof(Error))]
     public bool IsFailure => Error is not null;
 
     /// <summary>Why the operation failed, or null when it succeeded.</summary>
@@ -65,5 +69,5 @@ public sealed class Result<TValue> : Result
     /// <exception cref="InvalidOperationException">The result is a failure, so there is no value.</exception>
     public TValue Value => IsSuccess
         ? _value
-        : throw new InvalidOperationException($"A failed result has no value. Error: {Error!.Code}.");
+        : throw new InvalidOperationException($"A failed result has no value. Error: {Error.Code}.");
 }

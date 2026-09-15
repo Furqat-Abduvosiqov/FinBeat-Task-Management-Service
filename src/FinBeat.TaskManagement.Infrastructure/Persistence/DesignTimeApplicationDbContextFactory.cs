@@ -8,13 +8,11 @@ namespace FinBeat.TaskManagement.Infrastructure.Persistence;
 /// <remarks>
 /// Lets the tooling generate DDL without booting the application host. Set
 /// <c>ConnectionStrings__TaskManagement</c> to point <c>database update</c> at a real database;
-/// <c>migrations add</c> and <c>migrations script</c> never open a connection.
+/// <c>migrations add</c> and <c>migrations script</c> never open a connection. There is no fallback
+/// on purpose: a default would quietly run DDL against whatever database it named.
 /// </remarks>
 public sealed class DesignTimeApplicationDbContextFactory : IDesignTimeDbContextFactory<ApplicationDbContext>
 {
-    private const string FallbackConnectionString =
-        "Host=localhost;Port=5432;Database=finbeat_taskmanagement;Username=postgres;Password=postgres";
-
     /// <inheritdoc />
     public ApplicationDbContext CreateDbContext(string[] args)
     {
@@ -24,11 +22,6 @@ public sealed class DesignTimeApplicationDbContextFactory : IDesignTimeDbContext
             .Build();
 
         var connectionString = configuration.GetConnectionString(DatabaseOptions.ConnectionStringName);
-
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            connectionString = FallbackConnectionString;
-        }
 
         var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

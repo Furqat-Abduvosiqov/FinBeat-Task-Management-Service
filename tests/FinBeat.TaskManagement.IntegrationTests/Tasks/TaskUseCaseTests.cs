@@ -117,31 +117,68 @@ public sealed class TaskUseCaseTests(PostgresFixture fixture)
         var result = await new GetTasksHandler(context).HandleAsync(new GetTasksQuery(TaskItemStatus.Archived));
 
         result.IsSuccess.ShouldBeTrue();
-        result.Value.ShouldContain(task => task.Id == archived);
-        result.Value.ShouldNotContain(task => task.Id == excluded.Id);
-        result.Value.ShouldAllBe(task => task.Status == nameof(TaskItemStatus.Archived));
+        result.Value.Items.ShouldContain(task => task.Id == archived);
+        result.Value.Items.ShouldNotContain(task => task.Id == excluded.Id);
+        result.Value.Items.ShouldAllBe(task => task.Status == nameof(TaskItemStatus.Archived));
     }
 
     [Fact]
     public async Task Listing_returns_the_oldest_first()
     {
-        // Seeded newest first, so the expected order is the reverse of the insertion order. Asked
-        // without a status, too: filtered by one, ix_tasks_status_created_at hands back rows already
-        // sorted by created_at and dropping the OrderBy would go unnoticed.
-        var later = await SeedArchivedAsync(new DateTimeOffset(2026, 5, 3, 9, 0, 0, TimeSpan.Zero));
-        var earlier = await SeedArchivedAsync(new DateTimeOffset(2026, 5, 2, 9, 0, 0, TimeSpan.Zero));
+        // Older than anything else the suite seeds, so these two open page one however much has
+        // accumulated. Seeded newest first, so the expected order reverses the insertion order.
+        // Asked without a status, too: filtered by one, ix_tasks_status_created_at hands back rows
+        // already sorted by created_at and dropping the OrderBy would go unnoticed.
+        var later = await SeedArchivedAsync(new DateTimeOffset(2020, 1, 2, 9, 0, 0, TimeSpan.Zero));
+        var earlier = await SeedArchivedAsync(new DateTimeOffset(2020, 1, 1, 9, 0, 0, TimeSpan.Zero));
 
         await using var context = fixture.CreateContext();
         var result = await new GetTasksHandler(context).HandleAsync(new GetTasksQuery());
 
         result.IsSuccess.ShouldBeTrue();
+        result.Value.Items.Take(2).Select(task => task.Id).ShouldBe([earlier, later]);
+    }
 
-        var seeded = result.Value
-            .Where(task => task.Id == earlier || task.Id == later)
-            .Select(task => task.Id)
-            .ToArray();
+    [Fact]
+    public async Task Pages_neither_repeat_a_task_nor_skip_one()
+    {
+        // Older than everything else again, so these three are the first three rows in order.
+        var seeded = new List<Guid>();
 
-        seeded.ShouldBe([earlier, later]);
+        for (var day = 1; day <= 3; day++)
+        {
+            seeded.Add(await SeedArchivedAsync(new DateTimeOffset(2019, 1, day, 9, 0, 0, TimeSpan.Zero)));
+        }
+
+        await using var context = fixture.CreateContext();
+        var handler = new GetTasksHandler(context);
+
+        var first = await handler.HandleAsync(new GetTasksQuery(PageNumber: 1, PageSize: 2));
+        var second = await handler.HandleAsync(new GetTasksQuery(PageNumber: 2, PageSize: 2));
+
+        first.Value.Items.Count.ShouldBe(2);
+        first.Value.Items.Select(task => task.Id).ShouldBe(seeded.Take(2));
+        second.Value.Items[0].Id.ShouldBe(seeded[2]);
+
+        // The count is of everything matching, not of the page, so it cannot change between pages.
+        first.Value.TotalItems.ShouldBe(second.Value.TotalItems);
+        first.Value.TotalItems.ShouldBeGreaterThanOrEqualTo(3);
+        first.Value.HasNext.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(0, GetTasksHandler.DefaultPageSize)]
+    [InlineData(1, 0)]
+    [InlineData(1, GetTasksHandler.MaxPageSize + 1)]
+    public async Task A_page_outside_what_is_offered_is_rejected(int page, int pageSize)
+    {
+        await using var context = fixture.CreateContext();
+
+        var result = await new GetTasksHandler(context).HandleAsync(new GetTasksQuery(PageNumber: page, PageSize: pageSize));
+
+        result.IsFailure.ShouldBeTrue();
+        result.Error!.Code.ShouldBe("task.paging.invalid");
+        result.Error.Type.ShouldBe(ErrorType.Validation);
     }
 
     [Fact]
@@ -223,6 +260,23 @@ public sealed class TaskUseCaseTests(PostgresFixture fixture)
         result.Error.Type.ShouldBe(ErrorType.Conflict);
         publisher.Published.ShouldBeEmpty();
         (await ReadAsync(created.Id)).Status.ShouldBe(TaskItemStatus.Archived);
+    }
+
+    [Fact]
+    public async Task A_status_outside_the_enum_is_rejected_by_the_handler_too()
+    {
+        // The API rejects this at the edge with FluentValidation. This is the backstop for every
+        // other caller, and the reason the handler keeps its own check.
+        var created = await CreateAsync("Undefined status at the handler");
+
+        await using var context = fixture.CreateContext();
+
+        var result = await new ChangeTaskStatusHandler(context, new RecordingIntegrationEventPublisher(), Clock.New())
+            .HandleAsync(new ChangeTaskStatusCommand(created.Id, (TaskItemStatus)99));
+
+        result.IsFailure.ShouldBeTrue();
+        result.Error!.Code.ShouldBe("task.status.unknown");
+        result.Error.Type.ShouldBe(ErrorType.Validation);
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 using FinBeat.TaskManagement.Application.Abstractions;
 using FinBeat.TaskManagement.Application.Results;
 using FinBeat.TaskManagement.Domain.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinBeat.TaskManagement.Application.Tasks.Commands;
 
@@ -40,7 +41,16 @@ public sealed class DeleteTaskHandler(
         context.Tasks.Remove(task);
 
         await publisher.PublishRaisedEventsAsync(task, cancellationToken);
-        await context.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Nobody else could have changed it into existence, so it was deleted under us.
+            return Result.Failure(TaskErrors.NotFound(command.TaskId));
+        }
 
         return Result.Success();
     }
