@@ -1,5 +1,6 @@
 using FinBeat.TaskManagement.Application.Abstractions;
 using FinBeat.TaskManagement.Domain.Tasks;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinBeat.TaskManagement.Infrastructure.Persistence;
@@ -34,6 +35,12 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
         ArgumentNullException.ThrowIfNull(modelBuilder);
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+
+        // MassTransit's transactional outbox. These tables have to live in this context, because that
+        // is what lets a publish and the state change that caused it share one transaction.
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
 
         base.OnModelCreating(modelBuilder);
     }

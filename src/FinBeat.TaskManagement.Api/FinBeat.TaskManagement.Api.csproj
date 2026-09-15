@@ -5,9 +5,26 @@
         <PackageReference Include="Swashbuckle.AspNetCore"/>
     </ItemGroup>
 
+    <!-- Observability: Serilog logging and OpenTelemetry tracing. -->
+    <ItemGroup>
+        <PackageReference Include="Serilog.AspNetCore"/>
+        <PackageReference Include="Serilog.Sinks.Console"/>
+        <PackageReference Include="Serilog.Sinks.File"/>
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting"/>
+        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore"/>
+        <PackageReference Include="OpenTelemetry.Instrumentation.Http"/>
+        <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol"/>
+        <PackageReference Include="Npgsql.OpenTelemetry"/>
+    </ItemGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\FinBeat.TaskManagement.Application\FinBeat.TaskManagement.Application.csproj" />
         <ProjectReference Include="..\FinBeat.TaskManagement.Infrastructure\FinBeat.TaskManagement.Infrastructure.csproj" />
+    </ItemGroup>
+
+    <!-- Bootstrap and GlobalExceptionHandler are internal; the pipeline test drives them directly. -->
+    <ItemGroup>
+        <InternalsVisibleTo Include="FinBeat.TaskManagement.IntegrationTests" />
     </ItemGroup>
 
 </Project>

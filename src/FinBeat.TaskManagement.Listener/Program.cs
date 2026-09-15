@@ -1,7 +1,20 @@
 using FinBeat.TaskManagement.Listener;
+using Serilog;
 
-var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddHostedService<Worker>();
+Log.Logger = Bootstrap.CreateBootstrapLogger();
 
-var host = builder.Build();
-host.Run();
+try
+{
+    Host.CreateApplicationBuilder(args)
+        .AddListenerHost()
+        .Build()
+        .Run();
+}
+catch (Exception exception)
+{
+    Log.Fatal(exception, "Listener host terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
