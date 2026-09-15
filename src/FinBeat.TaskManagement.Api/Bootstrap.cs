@@ -108,8 +108,11 @@ internal static class Bootstrap
     /// <summary>Builds the request pipeline.</summary>
     internal static WebApplication UseApiPipeline(this WebApplication app)
     {
-        app.UseExceptionHandler();
+        // Request logging goes outside the exception handler, not inside it. Inside, an exception
+        // reaches this middleware before the handler has turned it into a 400, so every malformed
+        // request is logged as "responded 500" at Error - a client mistake that pages somebody.
         app.UseSerilogRequestLogging();
+        app.UseExceptionHandler();
 
         if (app.Environment.IsDevelopment())
         {
