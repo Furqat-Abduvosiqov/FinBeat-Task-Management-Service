@@ -104,6 +104,45 @@ public class TaskItemTests
         task.DomainEvents.ShouldBeEmpty();
     }
 
+    // One field at a time, because the guard is a conjunction. Rewritten as
+    // "Title == title || Description == description" it would turn every single-field update into a
+    // no-op - and a test that changes both fields, or neither, passes either way.
+    [Fact]
+    public void UpdateDetails_with_only_the_title_changed_assigns_it_and_raises_an_event()
+    {
+        var (task, clock) = NewTask();
+        task.ClearDomainEvents();
+
+        clock.Advance(TimeSpan.FromHours(1));
+        var newTitle = TaskTitle.Create("Buy oat milk");
+
+        task.UpdateDetails(newTitle, Description, clock);
+
+        task.Title.ShouldBe(newTitle);
+        task.Description.ShouldBe(Description);
+        task.UpdatedAt.ShouldBe(clock.GetUtcNow());
+
+        SingleEvent<TaskItemDetailsUpdatedDomainEvent>(task).Title.ShouldBe(newTitle);
+    }
+
+    [Fact]
+    public void UpdateDetails_with_only_the_description_changed_assigns_it_and_raises_an_event()
+    {
+        var (task, clock) = NewTask();
+        task.ClearDomainEvents();
+
+        clock.Advance(TimeSpan.FromHours(1));
+        var newDescription = TaskDescription.Create("Unsweetened");
+
+        task.UpdateDetails(Title, newDescription, clock);
+
+        task.Description.ShouldBe(newDescription);
+        task.Title.ShouldBe(Title);
+        task.UpdatedAt.ShouldBe(clock.GetUtcNow());
+
+        SingleEvent<TaskItemDetailsUpdatedDomainEvent>(task).Description.ShouldBe(newDescription);
+    }
+
     [Fact]
     public void UpdateDetails_throws_when_any_argument_is_null()
     {

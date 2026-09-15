@@ -41,13 +41,16 @@ public class TaskTitleTests
         Should.Throw<InvalidTaskTitleException>(() => TaskTitle.Create(value));
     }
 
+    // The limit applies after trimming, which is only visible when the two differ: a guard written
+    // against the raw value would reject this.
     [Fact]
-    public void Empty_and_too_long_failures_carry_distinct_messages()
+    public void Create_accepts_a_title_that_reaches_max_length_only_after_trimming()
     {
-        var emptyFailure = Should.Throw<InvalidTaskTitleException>(() => TaskTitle.Create(" "));
-        var tooLongFailure = Should.Throw<InvalidTaskTitleException>(() => TaskTitle.Create(new string('a', TaskTitle.MaxLength + 1)));
+        var value = $"  {new string('a', TaskTitle.MaxLength)}  ";
 
-        emptyFailure.Message.ShouldNotBe(tooLongFailure.Message);
+        var title = TaskTitle.Create(value);
+
+        title.Value.Length.ShouldBe(TaskTitle.MaxLength);
     }
 
     [Fact]

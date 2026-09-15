@@ -43,4 +43,16 @@ public class TaskDescriptionTests
 
         Should.Throw<InvalidTaskDescriptionException>(() => TaskDescription.Create(value));
     }
+
+    // The limit applies after trimming, which is only visible when the two differ: a guard written
+    // against the raw value would reject this.
+    [Fact]
+    public void Create_accepts_a_description_that_reaches_max_length_only_after_trimming()
+    {
+        var value = $"  {new string('a', TaskDescription.MaxLength)}  ";
+
+        var description = TaskDescription.Create(value);
+
+        description.Value.Length.ShouldBe(TaskDescription.MaxLength);
+    }
 }
