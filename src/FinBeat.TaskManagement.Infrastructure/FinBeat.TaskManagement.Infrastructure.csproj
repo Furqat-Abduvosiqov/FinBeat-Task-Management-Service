@@ -1,7 +1,33 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
+    <!--
+        Technology lives here, which is why the architecture rules leave this layer unconstrained:
+        ArchitectureModel.AllowedExternalReferences has no entry for Infrastructure.
+    -->
+    <ItemGroup>
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+        <PackageReference Include="EFCore.NamingConventions" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+        <!-- IConfiguration for AddInfrastructure. EF Core does not bring it transitively. -->
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+        <!--
+            Design-time only: the migration scaffolder and the dotnet-ef tool load it. PrivateAssets
+            keeps it out of anything that references this project.
+        -->
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <!--
+        Domain named explicitly even though Application already brings it: the persistence model binds
+        directly to TaskItem and its value objects, and that should not depend on Application keeping
+        its own reference. ProjectReferenceTests allows it.
+    -->
     <ItemGroup>
         <ProjectReference Include="..\FinBeat.TaskManagement.Application\FinBeat.TaskManagement.Application.csproj" />
+        <ProjectReference Include="..\FinBeat.TaskManagement.Domain\FinBeat.TaskManagement.Domain.csproj" />
     </ItemGroup>
 
 </Project>
