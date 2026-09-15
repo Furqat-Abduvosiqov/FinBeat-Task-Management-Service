@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text.Json.Serialization;
 using FinBeat.TaskManagement.Api.Endpoints;
 using FinBeat.TaskManagement.Api.Endpoints.Validation;
 using FinBeat.TaskManagement.Api.OpenApi;
@@ -9,7 +8,6 @@ using FinBeat.TaskManagement.Application.Tasks.Queries;
 using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Infrastructure;
 using FluentValidation;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 using Npgsql;
 using OpenTelemetry.Resources;
@@ -38,16 +36,6 @@ internal static class Bootstrap
         // Without AddProblemDetails the handler has nothing to write through and the body comes back empty.
         builder.Services.AddProblemDetails();
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-
-        // Statuses travel as names in both directions. Without this they bind as numbers on the way
-        // in while responses and events keep emitting names, so a client cannot echo back what it read.
-        builder.Services.ConfigureHttpJsonOptions(options =>
-            options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-
-        // The same converter again, on the options Swashbuckle reads. It never sees the one above -
-        // that is the minimal-API serializer - and would otherwise document every enum as an integer.
-        builder.Services.Configure<JsonOptions>(options =>
-            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
         // Defaults to true only in Development, so without this a body the binder cannot read - or a
         // query value it cannot parse - is a bare 400 with no body in production, and the handler
@@ -78,17 +66,24 @@ internal static class Bootstrap
                     + "`code` extension, which is the part worth matching on.",
             });
 
-            // Query parameters reach ApiExplorer as the strings they were parsed from, so the converter
-            // above never sees them and their schema has to be stated.
-            options.OperationFilter<StatusParameterFilter>();
+            // A query parameter reaches neither the named component a body $refs nor the serializer,
+            // so its schema has to be stated outright.
+            options.OperationFilter<EnumParameterFilter>();
 
             options.SupportNonNullableReferenceTypes();
 
-            // The XML from this assembly and from Application, which owns TaskResponse. Swashbuckle
-            // resolves both paths itself, and a project reference copies its XML to the consumer's
-            // output, so a missing file means the build changed and is worth failing on.
+            // The XML from this assembly, from Application, which owns TaskResponse, and from Domain,
+            // whose enum member summaries are what documents each status number. Swashbuckle resolves
+            // the paths itself, and a project reference copies its XML to the consumer's output, so a
+            // missing file means the build changed and is worth failing on.
             options.IncludeXmlComments(Assembly.GetExecutingAssembly());
             options.IncludeXmlComments(typeof(TaskResponse).Assembly);
+            options.IncludeXmlComments(typeof(TaskItemStatus).Assembly);
+
+            // After the XML comments, not before: enums travel as numbers and the document has to say
+            // what each number means, but Swashbuckle's own XML filter assigns Description outright and
+            // would drop the member list if this ran first. Filters run in registration order.
+            options.SchemaFilter<EnumSchemaFilter>();
         });
 
     // The use cases are registered from the host rather than from Application, which may reference

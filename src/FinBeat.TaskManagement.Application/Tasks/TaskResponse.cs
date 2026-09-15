@@ -6,7 +6,7 @@ namespace FinBeat.TaskManagement.Application.Tasks;
 /// <param name="Id">The task id.</param>
 /// <param name="Title">The task title.</param>
 /// <param name="Description">The description, empty when there is none.</param>
-/// <param name="Status">The status name, for example <c>InProgress</c>.</param>
+/// <param name="Status">The status, as its number. The OpenAPI document names each one.</param>
 /// <param name="CreatedAt">When the task was created, in UTC.</param>
 /// <param name="UpdatedAt">When the task last changed, in UTC.</param>
 /// <remarks>Primitives only, for the reason the integration contracts are: value objects with private constructors serialize but never come back.</remarks>
@@ -14,7 +14,7 @@ public sealed record TaskResponse(
     Guid Id,
     string Title,
     string Description,
-    string Status,
+    TaskItemStatus Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt)
 {
@@ -22,7 +22,7 @@ public sealed record TaskResponse(
         task.Id.Value,
         task.Title.Value,
         task.Description.Value,
-        task.Status.ToString(),
+        task.Status,
         task.CreatedAt,
         task.UpdatedAt);
 }

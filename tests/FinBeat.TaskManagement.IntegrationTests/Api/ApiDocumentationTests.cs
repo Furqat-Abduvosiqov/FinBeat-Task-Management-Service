@@ -32,14 +32,15 @@ public sealed class ApiDocumentationTests
     }
 
     [Fact]
-    public async Task Statuses_are_documented_as_names_on_both_the_request_and_the_query()
+    public async Task Statuses_are_documented_as_numbers_and_the_document_says_what_each_one_means()
     {
-        // Swashbuckle infers schemas with its own serializer, so without the explicit mapping these
-        // would read as integers while the wire carries names.
+        // Statuses travel as numbers, which tells a reader nothing on its own. OpenAPI has no field
+        // for documenting one enum member, so the meanings go in the description - read out of the
+        // XML summaries the enum already carries, which is why they cannot drift from the code.
         await using var app = await StartAsync();
 
         var document = await ReadDocumentAsync(app);
-        var expected = Enum.GetNames<TaskItemStatus>();
+        var expected = Enum.GetValues<TaskItemStatus>().Select(status => (int)status).ToArray();
 
         var schemas = document.GetProperty("components").GetProperty("schemas");
 
@@ -47,14 +48,45 @@ public sealed class ApiDocumentationTests
             .GetProperty("parameters").EnumerateArray()
             .Single(parameter => parameter.GetProperty("name").GetString() == "status");
 
-        // The converter gives every enum one named component that request bodies point at; a query
-        // parameter never reaches it, so the filter states that schema inline.
+        // Requests and responses both point at the one named component, so both get the meanings.
         schemas.GetProperty("ChangeTaskStatusRequest").GetProperty("properties").GetProperty("status")
             .GetProperty("$ref").GetString().ShouldBe("#/components/schemas/TaskItemStatus");
+        schemas.GetProperty("TaskResponse").GetProperty("properties").GetProperty("status")
+            .GetProperty("$ref").GetString().ShouldBe("#/components/schemas/TaskItemStatus");
 
-        Names(schemas.GetProperty(nameof(TaskItemStatus))).ShouldBe(expected);
-        Names(query.GetProperty("schema")).ShouldBe(expected);
+        Values(schemas.GetProperty(nameof(TaskItemStatus))).ShouldBe(expected);
+        Values(query.GetProperty("schema")).ShouldBe(expected);
+
+        // A parameter never reaches that component, so the same meanings have to be stated inline.
+        ShouldExplainEveryStatus(schemas.GetProperty(nameof(TaskItemStatus)));
+        ShouldExplainEveryStatus(query.GetProperty("schema"));
+
         query.GetProperty("description").GetString().ShouldNotBeNullOrWhiteSpace();
+    }
+
+    /// <summary>Asserts the description gives every status its number, its name and a meaning.</summary>
+    private static void ShouldExplainEveryStatus(JsonElement schema)
+    {
+        var description = schema.GetProperty("description").GetString().ShouldNotBeNull();
+
+        foreach (var status in Enum.GetValues<TaskItemStatus>())
+        {
+            // The meaning is the half that would quietly go missing if the XML stopped being read,
+            // so the assertion is on the whole line rather than on the number and name alone.
+            var line = description.Split('\n')
+                .SingleOrDefault(candidate => candidate.StartsWith($"{(int)status} = {status}", StringComparison.Ordinal))
+                .ShouldNotBeNull($"{status} is not explained by: {description}");
+
+            line[$"{(int)status} = {status}".Length..].ShouldStartWith(" - ");
+            line.Split(" - ", 2, StringSplitOptions.None)[1].Trim().ShouldNotBeNullOrWhiteSpace();
+        }
+    }
+
+    private static int[] Values(JsonElement schema)
+    {
+        schema.GetProperty("type").GetString().ShouldBe("integer");
+
+        return schema.GetProperty("enum").EnumerateArray().Select(value => value.GetInt32()).ToArray();
     }
 
     [Fact]
@@ -82,13 +114,6 @@ public sealed class ApiDocumentationTests
         version.ShouldNotBeNullOrWhiteSpace();
         tests.ShouldNotBeEmpty();
         tests.ShouldAllBe(test => Regex.IsMatch(version, test));
-    }
-
-    private static string[] Names(JsonElement schema)
-    {
-        schema.GetProperty("type").GetString().ShouldBe("string");
-
-        return schema.GetProperty("enum").EnumerateArray().Select(value => value.GetString()!).ToArray();
     }
 
     private static void ShouldDescribe(

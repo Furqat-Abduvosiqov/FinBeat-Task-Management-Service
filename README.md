@@ -178,8 +178,16 @@ rather than surfacing as a null reference on the first query.
 | `PUT` | `/tasks/{id}/status` | 200 / 400 / 404 / 409 |
 | `DELETE` | `/tasks/{id}` | 204 / 404 |
 
-Statuses travel as names — `New`, `InProgress`, `Completed`, `Archived` — in requests, responses and
-events alike. Failures are RFC 9457 problem details carrying a stable `code` extension; validation
+Statuses travel as numbers — `1` New, `2` InProgress, `3` Completed, `4` Archived — in requests and
+responses. The OpenAPI document spells out what each number means, taken from the summaries on the
+enum itself, so the two cannot drift; Swagger UI shows them under the field. The `?status=` query
+also accepts the name, since that binder parses both, but the number is what is documented.
+
+Integration events are the exception and carry the **name**: the API is versioned and documented,
+while consumers are not redeployed alongside it, and a name survives a renumbering they never hear
+about.
+
+Failures are RFC 9457 problem details carrying a stable `code` extension; validation
 failures add per-field `errors`.
 
 Swagger UI is served in Development only, at `/swagger`.
