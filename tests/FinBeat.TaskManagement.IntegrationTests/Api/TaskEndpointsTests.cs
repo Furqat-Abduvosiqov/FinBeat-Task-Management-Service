@@ -42,7 +42,7 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
 
         var created = await ReadJsonAsync(response);
         created.GetProperty("title").GetString().ShouldBe("Renew passport");
-        created.GetProperty("status").GetInt32().ShouldBe((int)TaskItemStatus.New);
+        created.GetProperty("status").GetString().ShouldBe(nameof(TaskItemStatus.New));
 
         // The Location header has to lead somewhere, which is what CreatedAtRoute is for.
         response.Headers.Location.ShouldNotBeNull();
@@ -58,6 +58,8 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
     [InlineData(null)]
     public async Task A_request_without_a_title_is_rejected_before_the_domain_sees_it(string? title)
     {
+        // Pins ValidationFilter<CreateTaskRequest> on POST /tasks: drop it and the blank title
+        // reaches TaskTitle.Create instead, failing with a different code and no "errors" field.
         var response = await _client.PostAsJsonAsync("/tasks", new { title, description = (string?)null });
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -80,18 +82,18 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task A_status_read_from_a_response_can_be_sent_straight_back()
     {
-        // Numbers in both directions: a client can send back exactly what it read. What each number
-        // means is in the OpenAPI document, harvested from the enum's own summaries.
+        // Names in both directions: a client can send back exactly what it read, and the value is
+        // already self-explanatory - nothing to look up in the OpenAPI document any more.
         var created = await CreateAsync("Round-trip the status");
-        created.GetProperty("status").GetInt32().ShouldBe((int)TaskItemStatus.New);
+        created.GetProperty("status").GetString().ShouldBe(nameof(TaskItemStatus.New));
 
         var response = await _client.PutAsJsonAsync(
             $"/tasks/{Id(created)}/status",
-            new { status = (int)TaskItemStatus.InProgress });
+            new { status = nameof(TaskItemStatus.InProgress) });
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await ReadJsonAsync(response)).GetProperty("status").GetInt32()
-            .ShouldBe((int)TaskItemStatus.InProgress);
+        (await ReadJsonAsync(response)).GetProperty("status").GetString()
+            .ShouldBe(nameof(TaskItemStatus.InProgress));
     }
 
     [Fact]
@@ -101,13 +103,13 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
 
         var archived = await _client.PutAsJsonAsync(
             $"/tasks/{Id(created)}/status",
-            new { status = (int)TaskItemStatus.Archived });
+            new { status = nameof(TaskItemStatus.Archived) });
 
         archived.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         var response = await _client.PutAsJsonAsync(
             $"/tasks/{Id(created)}/status",
-            new { status = (int)TaskItemStatus.Completed });
+            new { status = nameof(TaskItemStatus.Completed) });
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
 
@@ -122,14 +124,31 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task A_status_outside_the_enum_returns_400_rather_than_409()
     {
-        // A value nobody declared is a malformed request, not a state conflict - retry-on-409
-        // clients would loop on the latter.
+        // 400, not 409: an undeclared value is a malformed request, and retry-on-409 clients would
+        // loop on a conflict. allowIntegerValues is off, so 99 never deserializes at all.
         var created = await CreateAsync("Undefined status");
 
         var response = await _client.PutAsJsonAsync($"/tasks/{Id(created)}/status", new { status = 99 });
 
+        await ShouldBeAProblemAsync(response);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public async Task An_update_without_a_title_is_rejected_before_the_domain_sees_it(string? title)
+    {
+        // Pins ValidationFilter<UpdateTaskDetailsRequest> on PUT /tasks/{id}: drop it and the blank
+        // title reaches TaskTitle.Create instead, failing with a different code and no "errors" field.
+        var created = await CreateAsync("Rename me");
+
+        var response = await _client.PutAsJsonAsync(
+            $"/tasks/{Id(created)}",
+            new { title, description = (string?)null });
+
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        ShouldReportFieldError(await ReadJsonAsync(response), nameof(ChangeTaskStatusRequest.Status));
+        ShouldReportFieldError(await ReadJsonAsync(response), nameof(UpdateTaskDetailsRequest.Title));
     }
 
     [Fact]
@@ -198,14 +217,14 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
     {
         var created = await CreateAsync("Stays new");
 
-        var response = await _client.GetAsync($"/tasks?status={(int)TaskItemStatus.Archived}");
+        var response = await _client.GetAsync($"/tasks?status={nameof(TaskItemStatus.Archived)}");
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         var page = await ReadJsonAsync(response);
         var tasks = page.GetProperty("items").EnumerateArray().ToArray();
 
-        tasks.ShouldAllBe(task => task.GetProperty("status").GetInt32() == (int)TaskItemStatus.Archived);
+        tasks.ShouldAllBe(task => task.GetProperty("status").GetString() == nameof(TaskItemStatus.Archived));
         tasks.ShouldNotContain(task => task.GetProperty("id").GetString() == Id(created).ToString());
 
         // The envelope is what lets a client ask for the next page.

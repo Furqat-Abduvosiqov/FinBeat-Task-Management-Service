@@ -127,10 +127,9 @@ public sealed class TaskUseCaseTests(PostgresFixture fixture)
     [Fact]
     public async Task Listing_returns_the_oldest_first()
     {
-        // Older than anything else the suite seeds, so these two open page one however much has
-        // accumulated. Seeded newest first, so the expected order reverses the insertion order.
-        // Asked without a status, too: filtered by one, ix_tasks_status_created_at hands back rows
-        // already sorted by created_at and dropping the OrderBy would go unnoticed.
+        // Older than everything else seeded, so these two are page one regardless of what else exists.
+        // Unfiltered on purpose: filtered by status, ix_tasks_status_created_at already returns rows
+        // sorted, so a dropped OrderBy would go unnoticed.
         var later = await SeedArchivedAsync(new DateTimeOffset(2020, 1, 2, 9, 0, 0, TimeSpan.Zero));
         var earlier = await SeedArchivedAsync(new DateTimeOffset(2020, 1, 1, 9, 0, 0, TimeSpan.Zero));
 

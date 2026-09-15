@@ -31,7 +31,7 @@ public static class TaskErrors
 
     /// <summary>The status supplied is not one the domain declares.</summary>
     /// <param name="status">The value that was supplied.</param>
-    /// <remarks>A value outside the enum would otherwise reach the transition rules, be rejected as a move nobody can make, and come back as a conflict rather than the bad request it is.</remarks>
+    /// <remarks>Caught up front: on a status change an out-of-range value would otherwise fail the transition rules and come back as a conflict; on a query it would silently match nothing.</remarks>
     public static Error UnknownStatus(TaskItemStatus status) =>
         new("task.status.unknown", $"'{(int)status}' is not a known task status.", ErrorType.Validation);
 

@@ -2,10 +2,9 @@ using System.Xml.Linq;
 
 namespace FinBeat.TaskManagement.ArchitectureTests.Internals;
 
-// Reads what the .csproj files declare, which the IL cannot show: the compiler drops an unused
-// reference. Raw XML only, so imports and conditions are invisible - what is actually used is
-// covered from the other side by LayerPurityTests. Projects resolve by convention, not by search,
-// because a worktree inside the repo makes every project name match twice.
+// Reads what a .csproj declares, references the compiler would otherwise drop from the IL. Raw XML
+// only, so imports/conditions are invisible - what's actually used is covered by LayerPurityTests.
+// Projects resolve by convention, not search: a worktree inside the repo makes names match twice.
 internal static class SolutionLayout
 {
     private static readonly Lazy<DirectoryInfo> LazyRoot = new(FindRepositoryRoot);

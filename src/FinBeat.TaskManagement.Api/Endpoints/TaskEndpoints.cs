@@ -1,12 +1,11 @@
 using FinBeat.TaskManagement.Api.Endpoints.Validation;
-using FinBeat.TaskManagement.Api.OpenApi;
 using FinBeat.TaskManagement.Application.Results;
 using FinBeat.TaskManagement.Application.Tasks;
 using FinBeat.TaskManagement.Application.Tasks.Commands;
 using FinBeat.TaskManagement.Application.Tasks.Queries;
 using FinBeat.TaskManagement.Domain.Tasks;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.OpenApi.Models;
+using static FinBeat.TaskManagement.Api.Endpoints.EndpointDescriptions;
 
 namespace FinBeat.TaskManagement.Api.Endpoints;
 
@@ -45,13 +44,9 @@ internal static class TaskEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .WithOpenApi(operation =>
             {
-                // A parameter $refs the documented component, and Swagger UI does not show a $ref target's
-                // description next to the field, so the legend is repeated here where a caller reads it.
-                Describe(
-                    operation,
-                    "status",
-                    "Return only tasks in this status. Omit for all of them.\n\n"
-                        + EnumDocumentation.Describe(typeof(TaskItemStatus)));
+                // A parameter $refs the documented component, and Swagger UI does not show a $ref
+                // target's description beside the field, so the parameter carries its own.
+                Describe(operation, "status", "Return only tasks in this status. Omit for all of them.");
                 Describe(operation, "page", "Which page to return, counting from one.");
                 Describe(
                     operation,
@@ -78,9 +73,8 @@ internal static class TaskEndpoints
             .WithName("ChangeTaskStatus")
             .WithSummary("Moves a task to another status")
             .WithDescription(
-                "Allowed moves: New to InProgress, Completed or Archived; InProgress to New, Completed or Archived; "
-                + "Completed to InProgress or Archived; Archived to New. Anything else is a conflict. Setting the "
-                + "status a task already holds changes nothing and raises no event.")
+                $"Allowed moves: {DescribeTransitions()}. Anything else is a conflict. Setting the status a "
+                + "task already holds changes nothing and raises no event.")
             .AddEndpointFilter<ValidationFilter<ChangeTaskStatusRequest>>()
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status404NotFound)
@@ -165,17 +159,5 @@ internal static class TaskEndpoints
         var result = await handler.HandleAsync(new DeleteTaskCommand(id), cancellationToken);
 
         return result.IsSuccess ? TypedResults.NoContent() : result.Error.ToProblem();
-    }
-
-    // Documents one parameter of an operation, if it has one by that name.
-    private static void Describe(OpenApiOperation operation, string parameterName, string description)
-    {
-        var parameter = operation.Parameters
-            .FirstOrDefault(candidate => string.Equals(candidate.Name, parameterName, StringComparison.Ordinal));
-
-        if (parameter is not null)
-        {
-            parameter.Description = description;
-        }
     }
 }

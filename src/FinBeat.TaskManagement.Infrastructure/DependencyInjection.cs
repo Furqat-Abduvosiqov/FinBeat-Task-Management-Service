@@ -1,4 +1,5 @@
 using FinBeat.TaskManagement.Application.Abstractions;
+using FinBeat.TaskManagement.Contracts.Messaging;
 using FinBeat.TaskManagement.Contracts.Tasks;
 using FinBeat.TaskManagement.Infrastructure.Messaging;
 using FinBeat.TaskManagement.Infrastructure.Persistence;
@@ -14,10 +15,13 @@ namespace FinBeat.TaskManagement.Infrastructure;
 public static class DependencyInjection
 {
     /// <summary>The configuration section bound to <see cref="RabbitMqTransportOptions"/>.</summary>
-    public const string RabbitMqSectionName = "RabbitMq";
+    /// <remarks>Kept as its own name so existing callers do not have to reach into Contracts, but the
+    /// literal itself is single-sourced from <see cref="BrokerTopology"/> - the Listener declares the
+    /// same broker names from that one place too.</remarks>
+    public const string RabbitMqSectionName = BrokerTopology.RabbitMqSectionName;
 
     /// <summary>The exchange and queue that collect events no consumer queue was bound to receive.</summary>
-    public const string UnroutableName = "unroutable";
+    public const string UnroutableName = BrokerTopology.UnroutableName;
 
     /// <summary>The events published by this service, which is every contract the wire format declares.</summary>
     public static IReadOnlyList<Type> IntegrationEventTypes { get; } = typeof(TaskCreated).Assembly.GetExportedTypes();
@@ -70,9 +74,9 @@ public static class DependencyInjection
                 // alternate exchange its argument names. Without it the diverted message is dropped too.
                 rabbit.DeployPublishTopology = true;
 
-                // The outbox guarantees the broker accepted the event, not that anyone was listening. A
-                // fanout exchange with nothing bound discards silently; the alternate exchange catches
-                // those instead. Driven off the assembly so a new contract cannot miss it.
+                // The outbox guarantees the broker accepted the event, not that anyone was listening - an
+                // unbound fanout exchange discards silently, and the alternate exchange catches those instead.
+                // Driven off the assembly so a new contract cannot miss it.
                 foreach (var integrationEvent in IntegrationEventTypes)
                 {
                     rabbit.Publish(integrationEvent, exchange => exchange.BindAlternateExchangeQueue(UnroutableName));

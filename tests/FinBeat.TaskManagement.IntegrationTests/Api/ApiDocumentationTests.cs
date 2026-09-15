@@ -31,15 +31,14 @@ public sealed class ApiDocumentationTests
     }
 
     [Fact]
-    public async Task Statuses_are_documented_as_numbers_and_the_document_says_what_each_one_means()
+    public async Task Statuses_are_documented_as_names_the_enum_itself_explains()
     {
-        // Statuses travel as numbers, which tells a reader nothing on its own. OpenAPI has no field
-        // for documenting one enum member, so the meanings go in the description - read out of the
-        // XML summaries the enum already carries, which is why they cannot drift from the code.
+        // Statuses travel as names now, so there's no generated legend to keep in sync: the enum's
+        // own <summary> reaches the schema through Swashbuckle's XML-comments support.
         await using var app = await StartAsync();
 
         var document = await ReadDocumentAsync(app);
-        var expected = Enum.GetValues<TaskItemStatus>().Select(status => (int)status).ToArray();
+        var expected = Enum.GetNames<TaskItemStatus>();
 
         var schemas = document.GetProperty("components").GetProperty("schemas");
 
@@ -47,7 +46,7 @@ public sealed class ApiDocumentationTests
             .GetProperty("parameters").EnumerateArray()
             .Single(parameter => parameter.GetProperty("name").GetString() == "status");
 
-        // Requests and responses both point at the one named component, so both get the meanings.
+        // Requests and responses both point at the one named component, so both get the same names.
         schemas.GetProperty("ChangeTaskStatusRequest").GetProperty("properties").GetProperty("status")
             .GetProperty("$ref").GetString().ShouldBe("#/components/schemas/TaskItemStatus");
         schemas.GetProperty("TaskResponse").GetProperty("properties").GetProperty("status")
@@ -55,55 +54,32 @@ public sealed class ApiDocumentationTests
 
         Values(schemas.GetProperty(nameof(TaskItemStatus))).ShouldBe(expected);
 
-        // Swashbuckle points the parameter at the same component, so it inherits the values.
+        // Swashbuckle points the parameter at the same component, so it inherits the names too.
         query.GetProperty("schema").GetProperty("$ref").GetString()
             .ShouldBe("#/components/schemas/TaskItemStatus");
 
-        ShouldExplainEveryStatus(schemas.GetProperty(nameof(TaskItemStatus)));
-        // Swagger UI renders the parameter's own description, not the component's, so the
-        // meanings have to reach the reader here too.
-        ShouldExplainEveryStatus(query);
-
-        // Swashbuckle writes the enum's own <summary> here first and EnumDocumentation.Describe has
-        // to keep it; without this, dropping the `existing` branch is a silent loss.
+        // Nothing appended to the enum's own <summary> - no per-value meaning left to spell out.
         schemas.GetProperty(nameof(TaskItemStatus)).GetProperty("description").GetString()
-            .ShouldNotBeNull()
-            .Split('\n')[0].Trim()
             .ShouldBe("Where a task is in its lifecycle.");
 
+        // The endpoint still sets its own parameter description by hand: Swagger UI doesn't show a
+        // $ref target's description next to the field.
         query.GetProperty("description").GetString().ShouldNotBeNullOrWhiteSpace();
     }
 
-    /// <summary>Asserts the description gives every status its number, its name and a meaning.</summary>
-    private static void ShouldExplainEveryStatus(JsonElement schema)
+    private static string[] Values(JsonElement schema)
     {
-        var description = schema.GetProperty("description").GetString().ShouldNotBeNull();
+        schema.GetProperty("type").GetString().ShouldBe("string");
 
-        foreach (var status in Enum.GetValues<TaskItemStatus>())
-        {
-            // The meaning is the half that would quietly go missing if the XML stopped being read,
-            // so the assertion is on the whole line rather than on the number and name alone.
-            var line = description.Split('\n')
-                .SingleOrDefault(candidate => candidate.StartsWith($"{(int)status} = {status}", StringComparison.Ordinal))
-                .ShouldNotBeNull($"{status} is not explained by: {description}");
-
-            line[$"{(int)status} = {status}".Length..].ShouldStartWith(" - ");
-        }
-    }
-
-    private static int[] Values(JsonElement schema)
-    {
-        schema.GetProperty("type").GetString().ShouldBe("integer");
-
-        return schema.GetProperty("enum").EnumerateArray().Select(value => value.GetInt32()).ToArray();
+        return schema.GetProperty("enum").EnumerateArray().Select(value => value.GetString()!).ToArray();
     }
 
     [Fact]
     public async Task The_version_the_document_states_is_one_the_bundled_Swagger_UI_reads()
     {
-        // The generator and the UI ship separately and can fall out of step, which once rendered a
-        // valid document as "does not specify a valid version field". So the UI's own version test is
-        // read out of the bundle it serves and applied to the document, rather than asserting a literal.
+        // The generator and the bundled UI ship separately and can drift, once rendering a valid
+        // document as "does not specify a valid version field" - so check against the UI's own
+        // version regex instead of asserting a literal.
         await using var app = await StartAsync();
 
         var version = (await ReadDocumentAsync(app)).GetProperty("openapi").GetString();
@@ -114,8 +90,8 @@ public sealed class ApiDocumentationTests
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
-        // Were swagger-ui to stop shipping that test in this shape, the assertion below would hold
-        // over nothing at all, so finding it is the first thing to establish.
+        // If swagger-ui stopped shipping that test in this shape, the assertion below would pass over
+        // nothing - so check that some tests were actually found first.
         version.ShouldNotBeNullOrWhiteSpace();
         tests.ShouldNotBeEmpty();
         tests.ShouldAllBe(test => Regex.IsMatch(version, test));

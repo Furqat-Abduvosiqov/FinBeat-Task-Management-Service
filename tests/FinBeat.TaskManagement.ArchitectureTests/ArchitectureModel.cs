@@ -3,17 +3,18 @@ using NetArchTest.Rules;
 
 namespace FinBeat.TaskManagement.ArchitectureTests;
 
-// The architecture, written down once. Every rule derives from here. See README.md for the reasoning.
-//
-//   Api --> Infrastructure --> Application --+--> Domain
-//                                            |
-//   Listener --------------------------------+--> Contracts
+/// <summary>The layer graph, written down once - every architecture rule derives from here.</summary>
+/// <remarks>
+///   Api --> Infrastructure --> Application --+--> Domain
+///                                            |
+///   Listener --------------------------------+--> Contracts
+/// </remarks>
 internal static class ArchitectureModel
 {
     internal const string Domain = "FinBeat.TaskManagement.Domain";
 
-    // The wire format. Kept apart from Domain because domain events hold value objects with private
-    // constructors: they serialize, but they will not come back.
+    // Kept apart from Domain: domain events hold value objects with private constructors, which
+    // serialize but do not deserialize back.
     internal const string Contracts = "FinBeat.TaskManagement.Contracts";
 
     internal const string Application = "FinBeat.TaskManagement.Application";
@@ -26,17 +27,16 @@ internal static class ArchitectureModel
 
     internal static readonly string[] AllLayers = [Domain, Contracts, Application, Infrastructure, Api, Listener];
 
-    // Hosts are left out: top-level statements put their entry point in the global namespace, so the
-    // rule is not satisfiable there.
+    // Hosts excluded: top-level statements put the entry point in the global namespace, so the rule
+    // can't be satisfied there.
     internal static readonly string[] LibraryLayers = [Domain, Contracts, Application, Infrastructure];
 
     // No projects, no packages, BCL only.
     internal static readonly string[] DependencyFreeLayers = [Domain, Contracts];
 
-    // The one table that is a judgement call rather than a consequence of the ordering:
-    //   Api      takes Infrastructure too, because a composition root binds the adapters.
-    //   Listener takes only Contracts. It is a separate deployable; give it Application and it
-    //            becomes the same monolith deployed twice, holding the database it never needed.
+    // A judgement call, not a consequence of the ordering: Api also takes Infrastructure (composition
+    // root binds the adapters), and Listener takes only Contracts (it's a separate deployable - give
+    // it Application and it's the same monolith deployed twice, holding a database it never needed).
     internal static readonly IReadOnlyDictionary<string, string[]> RequiredReferences =
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
@@ -48,9 +48,8 @@ internal static class ArchitectureModel
             { Listener, [Contracts] }
         };
 
-    // Everything a layer already reaches transitively. Derived, not a second table: widening a hand-
-    // kept row would generate fewer cases, and fewer cases is not an error - the suite would go
-    // greener while getting weaker.
+    // Derived rather than a second hand-kept table: a widened row there would quietly shrink this
+    // list, and the suite would go greener while getting weaker.
     internal static string[] AllowedReferences(string layer) =>
         RequiredReferences[layer]
             .SelectMany(required => AllowedReferences(required).Prepend(required))
@@ -58,9 +57,9 @@ internal static class ArchitectureModel
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-    // Packages the inner layers may use. An allow-list, because a deny-list misses whatever nobody
-    // thought to ban. Layers absent from the keys are unconstrained, which is where technology belongs.
-    // Application gets EF Core alone, for the DbSet IApplicationDbContext exposes, and nothing more.
+    // An allow-list, not a deny-list, since a deny-list misses whatever nobody thought to ban. Layers
+    // absent from the keys are unconstrained. Application gets EF Core alone, for the DbSet on
+    // IApplicationDbContext.
     internal static readonly IReadOnlyDictionary<string, string[]> AllowedExternalReferences =
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
@@ -69,9 +68,8 @@ internal static class ArchitectureModel
             { Application, ["Microsoft.EntityFrameworkCore"] }
         };
 
-    // The same policy against the compiled assembly. A PackageReference says what was declared; this
-    // says what was used, including anything that arrived transitively. Assembly names, not package
-    // ids: one package can ship several.
+    // Same policy against the compiled assembly: a PackageReference says what was declared, this says
+    // what was actually used, transitive references included.
     internal static readonly IReadOnlyDictionary<string, string[]> AllowedExternalAssemblies =
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
@@ -90,12 +88,11 @@ internal static class ArchitectureModel
             .ToArray();
     }
 
-    // By name, not typeof(X).Assembly - a layer with no types yet has nothing to anchor on, and that
-    // is exactly when a wrong reference is cheapest to fix.
+    // By name, not typeof(X).Assembly - a layer with no types yet still needs to be checkable.
     internal static Assembly LoadAssembly(string layer) => Assembly.Load(layer);
 
-    // Blind spot worth knowing: forbidden names are matched as namespace prefixes, so a dependency on
-    // a global-namespace type is invisible here. That is what makes the namespace rule load-bearing.
+    // Forbidden names match as namespace prefixes, so a global-namespace type is invisible here -
+    // which is why the namespace-convention rule matters too.
     internal static IReadOnlyList<string> TypesDependingOn(string layer, params string[] forbidden) =>
         Types.InAssembly(LoadAssembly(layer))
             .ShouldNot()

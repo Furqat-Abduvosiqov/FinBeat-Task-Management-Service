@@ -11,7 +11,7 @@ public abstract class DomainException : Exception
 
     /// <summary>
     /// A stable identifier for this failure, such as <c>task.title.invalid</c>. Unlike the message
-    /// it is safe to match on, and the API maps it to a ProblemDetails type.
+    /// it is safe to match on, and the API sends it as the problem-details <c>code</c> member.
     /// </summary>
     public abstract string ErrorCode { get; }
 }

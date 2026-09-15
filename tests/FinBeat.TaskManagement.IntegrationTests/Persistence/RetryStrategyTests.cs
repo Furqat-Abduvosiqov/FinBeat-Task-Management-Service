@@ -12,9 +12,8 @@ public sealed class RetryStrategyTests
     [Fact]
     public void The_resolved_context_retries_transient_failures()
     {
-        // Through AddInfrastructure rather than a hand-built options object: the claim is about the
-        // context a host resolves, and options assembled here by hand would prove nothing about the
-        // ones DependencyInjection actually builds.
+        // Through AddInfrastructure, not a hand-built options object - the claim is about what a host
+        // actually resolves.
         var services = new ServiceCollection();
         services.AddInfrastructure(TestConfiguration.ForDatabase(TestConfiguration.UnusedConnectionString));
 
@@ -22,10 +21,8 @@ public sealed class RetryStrategyTests
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        // RetriesOnFailure rather than the concrete type, which lives in an Internal namespace.
-        // It is false for NpgsqlExecutionStrategy - the non-retrying default the stack trace named
-        // when a container restart surfaced 57P01 as a 500. Deleting EnableRetryOnFailure from
-        // ApplicationDbContext.OnConfiguring puts that strategy back here and turns this red.
+        // False for the non-retrying default strategy, which once let a container restart surface as
+        // a 500 - deleting EnableRetryOnFailure from OnConfiguring turns this red again.
         context.Database.CreateExecutionStrategy().RetriesOnFailure.ShouldBeTrue();
     }
 }

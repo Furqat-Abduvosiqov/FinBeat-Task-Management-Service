@@ -3,9 +3,9 @@ using Shouldly;
 
 namespace FinBeat.TaskManagement.ArchitectureTests.Rules;
 
-// Keeps technology out of the inner layers, which the layering rules cannot do: an ORM arrives as a
-// package, not a project reference. Two rules, because they fail on different mistakes - one reads
-// the project file, the other the compiled assembly.
+// Keeps technology out of the inner layers: an ORM arrives as a package, not a project reference, so
+// the layering rules alone can't catch it. Two rules here, checking the project file and the
+// compiled assembly respectively, since each catches a different mistake.
 public sealed class LayerPurityTests
 {
     private static readonly string SharedFrameworkDirectory =
@@ -30,10 +30,8 @@ public sealed class LayerPurityTests
             + ". If this one belongs, add it to ArchitectureModel.AllowedExternalReferences");
     }
 
-    // Closes the hole the rule above cannot see. Reading the project file only finds what the file
-    // says, so an assembly reached transitively through an approved package, or handed over by the SDK
-    // (switch a layer to Microsoft.NET.Sdk.Web and ASP.NET Core arrives with no XML at all), would pass
-    // it. This asks the compiled assembly what it actually needed.
+    // Closes the hole above: the project file can't show an assembly that arrived transitively, or
+    // one an SDK hands over with no XML at all (Microsoft.NET.Sdk.Web brings all of ASP.NET Core).
     [Theory]
     [MemberData(nameof(ArchitectureData.ExternallyConstrainedLayers), MemberType = typeof(ArchitectureData))]
     public void Inner_layer_compiles_against_no_unapproved_assembly(string layer)

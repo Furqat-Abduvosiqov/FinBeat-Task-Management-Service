@@ -6,8 +6,7 @@ namespace FinBeat.TaskManagement.Application.Tasks;
 
 internal static class TaskLookup
 {
-    // The TaskItemId constructor rather than From: From rejects an empty guid by throwing, and a
-    // caller who sends one has earned the same "not found" as any other id with no row behind it.
+    // No validation: Guid.Empty simply matches no row, and not-found is the honest answer.
     internal static Task<TaskItem?> FindByIdAsync(
         this IQueryable<TaskItem> tasks,
         Guid taskId,

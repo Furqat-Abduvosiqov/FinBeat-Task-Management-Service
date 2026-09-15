@@ -57,6 +57,8 @@ public sealed class ChangeTaskStatusHandler(
         }
         catch (DbUpdateConcurrencyException)
         {
+            // Also how a retried save looks when its first attempt already committed: xmin has moved on,
+            // so the replay matches nothing and reads as a conflict.
             return Result.Failure<TaskResponse>(TaskErrors.ConcurrentlyModified(command.TaskId));
         }
 
