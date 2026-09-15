@@ -1,4 +1,3 @@
-using FinBeat.TaskManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -19,10 +18,7 @@ public sealed class MigrationDriftTests
         //
         // This is the same comparison `dotnet ef migrations has-pending-model-changes` performs. It
         // lives here as well because there is no CI in this repository to run the CLI form.
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>();
-        ApplicationDbContextOptions.ConfigureFromConnectionString(options, ModelFixture.ConnectionString);
-
-        using var context = new ApplicationDbContext(options.Options);
+        using var context = ModelFixture.CreateDesignTimeContext();
 
         // Reached through IMigrationsAssembly rather than by naming ApplicationDbContextModelSnapshot:
         // EF scaffolds that class without an access modifier, so it is internal to Infrastructure.

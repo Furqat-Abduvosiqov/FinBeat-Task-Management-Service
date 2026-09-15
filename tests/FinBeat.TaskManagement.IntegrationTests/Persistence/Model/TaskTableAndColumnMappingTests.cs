@@ -3,17 +3,14 @@ using Shouldly;
 
 namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Model;
 
-public sealed class TaskTableAndColumnMappingTests : IClassFixture<ModelFixture>
+[Collection(nameof(ModelCollection))]
+public sealed class TaskTableAndColumnMappingTests(ModelFixture fixture)
 {
-    private readonly ModelFixture _fixture;
-
-    public TaskTableAndColumnMappingTests(ModelFixture fixture) => _fixture = fixture;
-
     [Fact]
     public void TaskItem_maps_to_the_tasks_table_with_no_schema()
     {
-        _fixture.TaskEntityType.GetTableName().ShouldBe("tasks");
-        _fixture.TaskEntityType.GetSchema().ShouldBeNull();
+        fixture.TaskEntityType.GetTableName().ShouldBe("tasks");
+        fixture.TaskEntityType.GetSchema().ShouldBeNull();
     }
 
     [Fact]
@@ -21,8 +18,8 @@ public sealed class TaskTableAndColumnMappingTests : IClassFixture<ModelFixture>
     {
         // A shadow property, a forgotten Ignore(DomainEvents), or a property added without a
         // migration all change this set - in either direction.
-        var columnNames = _fixture.TaskEntityType.GetProperties()
-            .Select(property => property.GetColumnName(_fixture.TaskTable))
+        var columnNames = fixture.TaskEntityType.GetProperties()
+            .Select(property => property.GetColumnName(fixture.TaskTable))
             .ToArray();
 
         columnNames.ShouldBe(

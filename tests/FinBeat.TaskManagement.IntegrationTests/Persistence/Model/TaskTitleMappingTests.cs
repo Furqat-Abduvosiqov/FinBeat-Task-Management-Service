@@ -5,16 +5,13 @@ using Shouldly;
 
 namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Model;
 
-public sealed class TaskTitleMappingTests : IClassFixture<ModelFixture>
+[Collection(nameof(ModelCollection))]
+public sealed class TaskTitleMappingTests(ModelFixture fixture)
 {
-    private readonly ModelFixture _fixture;
-
-    public TaskTitleMappingTests(ModelFixture fixture) => _fixture = fixture;
-
     [Fact]
     public void Title_is_a_non_nullable_bounded_varchar_mapped_through_TaskTitleConverter()
     {
-        var property = _fixture.TaskEntityType.FindProperty(nameof(TaskItem.Title)).ShouldNotBeNull();
+        var property = fixture.GetRequiredProperty(nameof(TaskItem.Title));
 
         property.IsNullable.ShouldBeFalse();
         property.GetMaxLength().ShouldBe(TaskTitle.MaxLength);
@@ -22,15 +19,19 @@ public sealed class TaskTitleMappingTests : IClassFixture<ModelFixture>
         // itself, not just the facet, is what catches that.
         property.GetColumnType().ShouldBe($"character varying({TaskTitle.MaxLength})");
 
-        // By the converter's runtime type name rather than a compile-time reference: the converter is
-        // an internal implementation detail of Infrastructure's persistence configuration.
-        property.GetValueConverter().ShouldNotBeNull().GetType().Name.ShouldBe("TaskTitleConverter");
+        // Exercised in both directions rather than asserted by runtime type name: HasConversion(lambda,
+        // lambda) compiles to a compiler-generated ValueConverter<T,U> whose GetType().Name carries no
+        // meaning.
+        var converter = property.GetValueConverter().ShouldNotBeNull();
+        converter.ProviderClrType.ShouldBe(typeof(string));
+        converter.ConvertToProvider(TaskTitle.Create("Renew passport")).ShouldBe("Renew passport");
+        converter.ConvertFromProvider("Renew passport").ShouldBeOfType<TaskTitle>().Value.ShouldBe("Renew passport");
     }
 
     [Fact]
     public void Titles_default_value_comparer_uses_value_equality_not_reference_equality()
     {
-        var property = _fixture.TaskEntityType.FindProperty(nameof(TaskItem.Title)).ShouldNotBeNull();
+        var property = fixture.GetRequiredProperty(nameof(TaskItem.Title));
         var comparer = property.GetValueComparer().ShouldNotBeNull();
 
         var left = TaskTitle.Create("a");

@@ -1,6 +1,7 @@
 using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Infrastructure;
 using FinBeat.TaskManagement.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Configuration;
@@ -52,11 +53,9 @@ public sealed class ModelFixture : IDisposable
 
     /// <summary>The design-time model the same context produces.</summary>
     /// <remarks>
-    /// Not the same object as <see cref="Model"/>, and the difference matters here. EF strips
-    /// design-time-only annotations from the runtime model, and the <c>Npgsql:Enum:</c> annotation
-    /// <c>HasPostgresEnum</c> writes is one of them — so <c>GetPostgresEnums()</c> on
-    /// <see cref="Model"/> returns nothing at all. Anything asserting on the native enum has to ask
-    /// for this model, which is also the one migrations are scaffolded from.
+    /// Not the same object as <see cref="Model"/>: EF strips design-time-only annotations from the
+    /// runtime model. This is the model migrations are scaffolded from, so it is the one to compare
+    /// against when asking whether what gets migrated matches what gets queried.
     /// </remarks>
     public IModel DesignTimeModel { get; }
 
@@ -66,6 +65,14 @@ public sealed class ModelFixture : IDisposable
     /// <summary>The store identifier for the table <see cref="TaskEntityType"/> maps to.</summary>
     public StoreObjectIdentifier TaskTable { get; }
 
+    /// <summary>Looks up a property of <see cref="TaskEntityType"/> by its CLR name.</summary>
+    /// <param name="propertyName">The property name, typically <c>nameof(TaskItem.X)</c>.</param>
+    /// <exception cref="InvalidOperationException"><paramref name="propertyName"/> is not mapped.</exception>
+    public IProperty GetRequiredProperty(string propertyName) =>
+        TaskEntityType.FindProperty(propertyName)
+            ?? throw new InvalidOperationException(
+                $"{propertyName} is not a mapped property of {nameof(TaskItem)}.");
+
     /// <summary>Builds configuration carrying a single connection string, the way the Api host does.</summary>
     public static IConfiguration BuildConfiguration(string? connectionString) =>
         new ConfigurationBuilder()
@@ -74,6 +81,23 @@ public sealed class ModelFixture : IDisposable
                 ["ConnectionStrings:" + DependencyInjection.ConnectionStringName] = connectionString
             })
             .Build();
+
+    /// <summary>
+    /// Builds an <see cref="ApplicationDbContext"/> the way <c>dotnet ef</c> does — from a bare
+    /// connection string rather than through DI. The caller owns disposal.
+    /// </summary>
+    /// <remarks>
+    /// Note what is deliberately absent: no naming convention is applied here. The context applies it
+    /// itself in <c>OnConfiguring</c>, which is the property the parity test exists to confirm — a
+    /// context built this crudely still has to produce the model the application queries.
+    /// </remarks>
+    public static ApplicationDbContext CreateDesignTimeContext()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>();
+        options.UseNpgsql(ConnectionString);
+
+        return new ApplicationDbContext(options.Options);
+    }
 
     /// <inheritdoc />
     public void Dispose() => Provider.Dispose();

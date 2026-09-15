@@ -1,3 +1,4 @@
+using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -10,13 +11,6 @@ namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Postgres;
 /// A throwaway PostgreSQL instance, migrated once and shared by every <c>RequiresDocker</c> test
 /// through <see cref="PostgresCollection"/>.
 /// </summary>
-/// <remarks>
-/// The three steps in <see cref="InitializeAsync"/> have to happen in exactly that order. An
-/// <see cref="NpgsqlDataSource"/> loads PostgreSQL's type catalogue once, on its first physical
-/// connection, and caches it for its whole lifetime. Built before the migration runs
-/// <c>CREATE TYPE task_item_status</c>, it would never see that type, and every insert afterwards
-/// would fail with an unmapped-type error pointing nowhere near the real cause.
-/// </remarks>
 public sealed class PostgresFixture : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
@@ -24,49 +18,51 @@ public sealed class PostgresFixture : IAsyncLifetime
         .Build();
 
     private NpgsqlDataSource? _dataSource;
+    private string? _connectionString;
 
-    /// <summary>The data source the tests use to run raw SQL assertions alongside EF Core.</summary>
+    /// <summary>The data source the tests use for raw SQL assertions alongside EF Core.</summary>
     public NpgsqlDataSource DataSource =>
         _dataSource ?? throw new InvalidOperationException($"{nameof(InitializeAsync)} has not run yet.");
 
-    /// <summary>Starts the container, migrates it, and only then builds the pooled data source.</summary>
+    /// <summary>Starts the container and applies the migrations.</summary>
     public async Task InitializeAsync()
     {
-        // 1. Start the container.
         await _container.StartAsync();
 
-        var connectionString = _container.GetConnectionString();
+        _connectionString = _container.GetConnectionString();
+        _dataSource = NpgsqlDataSource.Create(_connectionString);
 
-        // 2. Migrate through a context built from a plain connection string - no pooled
-        // NpgsqlDataSource yet - so CREATE TYPE task_item_status is the first thing to touch the
-        // connection, before anything could have cached a type catalogue without it.
-        var schemaOptions = new DbContextOptionsBuilder<ApplicationDbContext>();
-        ApplicationDbContextOptions.ConfigureFromConnectionString(schemaOptions, connectionString);
+        await using var schemaContext = CreateContext();
+        await schemaContext.Database.MigrateAsync();
 
-        await using (var schemaContext = new ApplicationDbContext(schemaOptions.Options))
-        {
-            await schemaContext.Database.MigrateAsync();
-
-            var pendingMigrations = await schemaContext.Database.GetPendingMigrationsAsync();
-            pendingMigrations.ShouldBeEmpty();
-        }
-
-        // 3. Only now build the data source the tests actually use.
-        _dataSource = ApplicationDbContextOptions.CreateDataSource(connectionString);
+        var pendingMigrations = await schemaContext.Database.GetPendingMigrationsAsync();
+        pendingMigrations.ShouldBeEmpty();
     }
 
-    /// <summary>Builds a fresh <see cref="ApplicationDbContext"/> over the shared data source.</summary>
+    /// <summary>Builds a fresh <see cref="ApplicationDbContext"/> against the container.</summary>
     /// <remarks>
-    /// A new context - and, since the data source pools connections rather than reusing one, typically
-    /// a fresh connection - per call. Nothing is served from an identity map left over from a previous
-    /// read, which is exactly where a stale enum type cache would show up.
+    /// A new context per call, so nothing is served from an identity map left over from an earlier
+    /// read — which is what a round-trip assertion has to rule out in order to mean anything.
     /// </remarks>
     public ApplicationDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>();
-        ApplicationDbContextOptions.Configure(options, DataSource);
+        options.UseNpgsql(_connectionString ?? throw new InvalidOperationException($"{nameof(InitializeAsync)} has not run yet."));
 
         return new ApplicationDbContext(options.Options);
+    }
+
+    /// <summary>Adds the given tasks through a fresh context and saves them.</summary>
+    /// <remarks>
+    /// Fresh, and disposed before returning, rather than a context the caller keeps for the read that
+    /// usually follows a seed: one context spanning both would serve that read out of its own identity
+    /// map instead of out of PostgreSQL, which is exactly the failure a round-trip test exists to catch.
+    /// </remarks>
+    public async Task SeedAsync(params TaskItem[] tasks)
+    {
+        await using var context = CreateContext();
+        context.Tasks.AddRange(tasks);
+        await context.SaveChangesAsync();
     }
 
     /// <inheritdoc />

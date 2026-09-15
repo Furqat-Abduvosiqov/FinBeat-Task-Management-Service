@@ -7,12 +7,9 @@ using Shouldly;
 
 namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Model;
 
-public sealed class ApplicationDbContextRegistrationTests : IClassFixture<ModelFixture>
+[Collection(nameof(ModelCollection))]
+public sealed class ApplicationDbContextRegistrationTests(ModelFixture fixture)
 {
-    private readonly ModelFixture _fixture;
-
-    public ApplicationDbContextRegistrationTests(ModelFixture fixture) => _fixture = fixture;
-
     [Fact]
     public void IApplicationDbContext_and_ApplicationDbContext_resolve_to_the_same_instance_within_one_scope()
     {
@@ -20,7 +17,7 @@ public sealed class ApplicationDbContextRegistrationTests : IClassFixture<ModelF
         // IApplicationDbContext and anything else depending on ApplicationDbContext would each see
         // their own, and SaveChangesAsync would report success while saving nothing the use case
         // actually changed.
-        using var scope = _fixture.Provider.CreateScope();
+        using var scope = fixture.Provider.CreateScope();
 
         IApplicationDbContext viaInterface = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
         ApplicationDbContext viaConcreteType = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();

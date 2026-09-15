@@ -10,6 +10,7 @@
         <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
         <!-- IConfiguration for AddInfrastructure. EF Core does not bring it transitively. -->
         <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
         <!--
             Design-time only: the migration scaffolder and the dotnet-ef tool load it. PrivateAssets
             keeps it out of anything that references this project.

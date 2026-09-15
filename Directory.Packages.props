@@ -57,6 +57,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.31" />
     <!-- IConfiguration for AddInfrastructure. EF Core does not bring it transitively. -->
     <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="8.0.0" />
 
     <!-- Integration tests: a throwaway PostgreSQL, and configuration to drive AddInfrastructure. -->
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.1.0" />

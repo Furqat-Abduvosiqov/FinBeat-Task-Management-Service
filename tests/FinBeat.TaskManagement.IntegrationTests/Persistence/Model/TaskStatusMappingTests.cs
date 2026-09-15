@@ -1,41 +1,43 @@
 using FinBeat.TaskManagement.Domain.Tasks;
-using FinBeat.TaskManagement.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Shouldly;
 
 namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Model;
 
-public sealed class TaskStatusMappingTests : IClassFixture<ModelFixture>
+[Collection(nameof(ModelCollection))]
+public sealed class TaskStatusMappingTests(ModelFixture fixture)
 {
-    private readonly ModelFixture _fixture;
-
-    public TaskStatusMappingTests(ModelFixture fixture) => _fixture = fixture;
-
     [Fact]
-    public void Status_column_is_the_native_postgres_enum_with_no_value_converter()
+    public void Status_is_stored_as_the_int_the_enum_declares()
     {
-        var property = _fixture.TaskEntityType.FindProperty(nameof(TaskItem.Status)).ShouldNotBeNull();
+        var property = fixture.GetRequiredProperty(nameof(TaskItem.Status));
 
-        property.GetColumnType().ShouldBe(PostgresEnumMapping.TaskItemStatusTypeName);
-        // A value converter here would mean HasPostgresEnum was dropped and the column fell back to
-        // an integer, or .HasConversion<int>() was added on top of the enum column.
-        property.GetValueConverter().ShouldBeNull();
+        // integer, and nothing else. A stray HasConversion<string>() would make it text, and a native
+        // PostgreSQL enum type would make it something the database has to be taught about first.
+        property.GetColumnType().ShouldBe("integer");
+        property.ClrType.ShouldBe(typeof(TaskItemStatus));
         property.IsNullable.ShouldBeFalse();
+
+        // Null on purpose: an int-backed enum maps to integer natively, so EF installs no converter.
+        // If one ever appears here, something has been layered on top of the default mapping.
+        property.GetValueConverter().ShouldBeNull();
     }
 
     [Fact]
-    public void Exactly_one_postgres_enum_is_registered_with_the_expected_labels_in_declaration_order()
+    public void A_check_constraint_restricts_the_column_to_the_declared_statuses()
     {
-        IReadOnlyList<PostgresEnum> enums = _fixture.DesignTimeModel.GetPostgresEnums();
-        var enumType = enums.ShouldHaveSingleItem();
+        // The design-time model, not the runtime one: check constraints are stripped from the
+        // read-optimised model EF serves at runtime, so asking TaskEntityType for them throws.
+        var entityType = fixture.DesignTimeModel.FindEntityType(typeof(TaskItem)).ShouldNotBeNull();
+        var checkConstraint = entityType.GetCheckConstraints().ShouldHaveSingleItem();
 
-        enumType.Name.ShouldBe(PostgresEnumMapping.TaskItemStatusTypeName);
-        enumType.Schema.ShouldBeNull();
+        checkConstraint.Name.ShouldBe("ck_tasks_status");
 
-        // Hard-coded, deliberately: this is what has to change by hand, alongside a migration, the
-        // day TaskItemStatus grows, is reordered, or is renamed. Deriving the expectation from
-        // Enum.GetNames would make the test agree with whatever the enum says, including a wrong change.
-        enumType.Labels.ShouldBe(["new", "in_progress", "completed", "archived"]);
+        // Hard-coded, deliberately. An int column accepts any int, so this constraint is the only thing
+        // keeping a 0 - the value the enum pointedly has no member for - or a 5 out of the table. The
+        // day TaskItemStatus grows, this expectation has to change by hand alongside a migration;
+        // deriving it from Enum.GetValues would make the test agree with whatever the enum says,
+        // including a wrong change.
+        checkConstraint.Sql.ShouldBe("status IN (1, 2, 3, 4)");
     }
 }

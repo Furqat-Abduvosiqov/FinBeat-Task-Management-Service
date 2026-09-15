@@ -1,3 +1,4 @@
+using FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
 using Npgsql;
 using Shouldly;
 
@@ -5,29 +6,51 @@ namespace FinBeat.TaskManagement.IntegrationTests.Persistence.Postgres;
 
 [Collection(nameof(PostgresCollection))]
 [Trait("Category", "RequiresDocker")]
-public sealed class TaskItemConstraintTests
+public sealed class TaskItemConstraintTests(PostgresFixture fixture)
 {
-    private readonly PostgresFixture _fixture;
-
-    public TaskItemConstraintTests(PostgresFixture fixture) => _fixture = fixture;
-
     [Fact]
-    public async Task Inserting_a_201_character_title_is_rejected_by_the_column_itself()
+    public async Task A_title_longer_than_the_domain_allows_is_rejected_by_the_column_itself()
     {
-        // Bypasses EF and TaskTitle entirely: this is what proves varchar(200) is a real column
-        // constraint PostgreSQL enforces on its own, not only a model facet that only EF respects.
-        await using var command = _fixture.DataSource.CreateCommand("""
-            INSERT INTO tasks (id, title, description, status, created_at, updated_at)
-            VALUES (@id, @title, @description, 'new'::task_item_status, @createdAt, @updatedAt)
-            """);
-        command.Parameters.AddWithValue("id", Guid.NewGuid());
-        command.Parameters.AddWithValue("title", new string('a', 201));
-        command.Parameters.AddWithValue("description", string.Empty);
-        command.Parameters.AddWithValue("createdAt", DateTimeOffset.UtcNow);
-        command.Parameters.AddWithValue("updatedAt", DateTimeOffset.UtcNow);
+        await using var command = Insert(title: new string('a', TaskTitle.MaxLength + 1), status: 1);
 
         var exception = await Should.ThrowAsync<PostgresException>(() => command.ExecuteNonQueryAsync());
 
+        // 22001 is string_data_right_truncation.
         exception.SqlState.ShouldBe("22001");
+    }
+
+    [Fact]
+    public async Task A_status_outside_the_declared_range_is_rejected_by_the_check_constraint()
+    {
+        // 0 specifically: TaskItemStatus starts at 1 and has no zero member, so a default-initialised
+        // int is exactly the value that must never reach the table. With the column mapped as a plain
+        // integer, this constraint is the only thing that stops it.
+        await using var command = Insert(title: "Renew passport", status: 0);
+
+        var exception = await Should.ThrowAsync<PostgresException>(() => command.ExecuteNonQueryAsync());
+
+        // 23514 is check_violation.
+        exception.SqlState.ShouldBe("23514");
+        exception.ConstraintName.ShouldBe("ck_tasks_status");
+    }
+
+    // Bypasses EF and the domain entirely. That is the point of both tests above: they prove the
+    // column definition and the constraint are enforced by PostgreSQL itself, not merely by model
+    // facets that only hold while writes go through EF.
+    private NpgsqlCommand Insert(string title, int status)
+    {
+        var command = fixture.DataSource.CreateCommand("""
+            INSERT INTO tasks (id, title, description, status, created_at, updated_at)
+            VALUES (@id, @title, @description, @status, @createdAt, @updatedAt)
+            """);
+
+        command.Parameters.AddWithValue("id", Guid.NewGuid());
+        command.Parameters.AddWithValue("title", title);
+        command.Parameters.AddWithValue("description", string.Empty);
+        command.Parameters.AddWithValue("status", status);
+        command.Parameters.AddWithValue("createdAt", DateTimeOffset.UtcNow);
+        command.Parameters.AddWithValue("updatedAt", DateTimeOffset.UtcNow);
+
+        return command;
     }
 }
