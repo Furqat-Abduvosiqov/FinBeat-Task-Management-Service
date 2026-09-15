@@ -3,7 +3,7 @@
 ## Commit authorship
 
 **Commit messages must not attribute authorship to an AI assistant.** No `Co-Authored-By: Claude`,
-no `Generated with ...`, no session links, no `noreply@anthropic.com`, no `🤖` attribution lines —
+no `Generated with ...`, no session links, no `noreply@anthropic.com`, no `🤖` attribution lines -
 regardless of which tools were involved in producing the change.
 
 The reasoning is simple: the author of a commit is the person who is accountable for it. Whoever
@@ -21,7 +21,7 @@ commits was removed in `645f140`, so the rule now rests on review.
 Types in use here: `feat`, `fix`, `refactor`, `test`, `build`, `chore`, `docs`, `perf`.
 
 - Subject in the imperative mood, under 72 characters, no trailing period.
-- Explain **why** in the body, not just what — the diff already shows what changed. Where a
+- Explain **why** in the body, not just what - the diff already shows what changed. Where a
   non-obvious approach was chosen, say what the obvious alternative was and why it was rejected.
 - State what was verified, with the actual result (`dotnet test` counts, build warning counts).
 
@@ -33,7 +33,7 @@ Enforced by the build rather than by review:
   member in `src/` is a **warning** (CS1591). It is not an error: this repository has no
   `TreatWarningsAsErrors`, no `EnforceCodeStyleInBuild` and no `.editorconfig`, so a zero-warning
   build is a convention whoever runs it upholds, not something the build can fail on. Keep it at
-  zero regardless — every commit here states its warning count.
+  zero regardless - every commit here states its warning count.
 - Analyzer suppressions are scoped to the specific file that needs them, never applied repo-wide.
 - `Directory.Packages.props` owns every package version (central package management).
   `PackageReference` elements carry no `Version=` attribute.
@@ -41,7 +41,7 @@ Enforced by the build rather than by review:
 
 ## Architecture
 
-`FinBeat.TaskManagement.Domain` must depend on **nothing** — zero `PackageReference`, zero
+`FinBeat.TaskManagement.Domain` must depend on **nothing** - zero `PackageReference`, zero
 `ProjectReference`, base class library only. This is asserted by tests in
 `tests/FinBeat.TaskManagement.ArchitectureTests/`, which read the `.csproj` files directly so
 the rule holds even while a layer is still empty.

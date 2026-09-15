@@ -19,8 +19,8 @@ public sealed class TaskItemTests
     {
         // AutoAdvanceAmount makes every read of the clock return a different instant. Without it a
         // FakeTimeProvider pinned at a fixed time returns the same value from every read, so
-        // rewriting Create as two separate GetUtcNow() calls — the exact regression the
-        // "one single clock read" requirement exists to prevent — would leave this test green.
+        // rewriting Create as two separate GetUtcNow() calls - the exact regression the
+        // "one single clock read" requirement exists to prevent - would leave this test green.
         var start = DateTimeOffset.UnixEpoch;
         var clock = new FakeTimeProvider(start) { AutoAdvanceAmount = TimeSpan.FromSeconds(1) };
 
@@ -275,7 +275,7 @@ public sealed class TaskItemTests
         clock.Advance(TimeSpan.FromMinutes(5));
         task.Delete(clock);
 
-        // Delete records intent only — the row is removed by whoever commits, so there is nothing on
+        // Delete records intent only - the row is removed by whoever commits, so there is nothing on
         // the aggregate for it to mutate. Pins that against a future edit adding an UpdatedAt bump.
         task.Status.ShouldBe(statusBefore);
         task.UpdatedAt.ShouldBe(updatedAtBefore);

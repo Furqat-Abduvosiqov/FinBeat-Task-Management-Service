@@ -35,8 +35,8 @@ docker compose up -d --build
 
 | | |
 |---|---|
-| API | http://localhost:8080 — Swagger at `/swagger` |
-| RabbitMQ management | http://localhost:15672 — `guest` / `guest` |
+| API | http://localhost:8080 - Swagger at `/swagger` |
+| RabbitMQ management | http://localhost:15672 - `guest` / `guest` |
 | Jaeger | http://localhost:16686 |
 
 Compose starts them in the order the system needs rather than all at once:
@@ -47,16 +47,16 @@ Compose starts them in the order the system needs rather than all at once:
    two instances cannot race each other.
 3. `listener` waits for RabbitMQ, and declares the consumer queues.
 4. `api` waits for the migrator to have **exited successfully**, so the schema is there before the
-   first request, and starts after `listener` for a head start rather than a guarantee —
+   first request, and starts after `listener` for a head start rather than a guarantee -
    `service_started` means the process exists, not that its queues are bound. Anything published in
    that gap waits in the `unroutable` queue instead of being dropped.
 
 Published ports bind to `127.0.0.1` by default, so the stack is reachable only from the machine
-running it. Set `BIND_ADDRESS=0.0.0.0` in `.env` to share it — remember there is no authentication,
+running it. Set `BIND_ADDRESS=0.0.0.0` in `.env` to share it - remember there is no authentication,
 and `DELETE /tasks/{id}` is a hard delete.
 
 Every port and credential has a default compiled into `docker-compose.yml`, so no `.env` is needed.
-Copy `.env.example` to `.env` to change one — most often a port already taken by something you
+Copy `.env.example` to `.env` to change one - most often a port already taken by something you
 started by hand.
 
 ```bash
@@ -85,7 +85,7 @@ docker run -d --name finbeat-jaeger -p 16686:16686 -p 4317:4317 -p 4318:4318 jae
 
 ### 2. Apply the migrations
 
-Schema changes are a deploy step, never applied at startup — a host that migrates on boot races
+Schema changes are a deploy step, never applied at startup - a host that migrates on boot races
 every other instance and needs DDL rights at runtime.
 
 ```bash
@@ -101,7 +101,7 @@ dotnet ef database update \
 ### 3. Run the listener, then the API
 
 Order matters on a cold broker. Consumer queues and their bindings are declared by the **listener**
-at startup, and a fanout exchange with nothing bound to it discards what it cannot route — silently,
+at startup, and a fanout exchange with nothing bound to it discards what it cannot route - silently,
 with no error returned to the publisher.
 
 ```bash
@@ -124,7 +124,7 @@ curl -s -u guest:guest http://localhost:15672/api/queues/%2F/unroutable
 ```
 
 Messages sitting there mean events were published with nothing listening. Nothing drains that queue
-automatically — it is a place to look, not a recovery mechanism.
+automatically - it is a place to look, not a recovery mechanism.
 
 The alternate exchange is an *exchange argument*, so it is fixed when the exchange is first declared.
 Pointing this build at a broker that already carries exchanges declared without it fails the publish
@@ -135,7 +135,7 @@ next attempt.
 ### Tracing
 
 Both hosts export OpenTelemetry traces over OTLP, and `appsettings.Development.json` points them at
-the Jaeger container above — a local run is traced with no further setup. Leave `OtlpEndpoint` empty
+the Jaeger container above - a local run is traced with no further setup. Leave `OtlpEndpoint` empty
 and nothing is exported at all, rather than every span failing against a collector that is not there.
 
 Open http://localhost:16686 and pick `FinBeat.TaskManagement.Api`. One request spans both services:
@@ -163,7 +163,7 @@ Every setting can be supplied as an environment variable, with `__` for nesting.
 
 | Setting | Environment variable | Default |
 |---|---|---|
-| `ConnectionStrings:TaskManagement` | `ConnectionStrings__TaskManagement` | none — startup fails without it |
+| `ConnectionStrings:TaskManagement` | `ConnectionStrings__TaskManagement` | none - startup fails without it |
 | `RabbitMq:Host` | `RabbitMq__Host` | `localhost` |
 | `RabbitMq:Port` | `RabbitMq__Port` | `5672` |
 | `RabbitMq:VHost` | `RabbitMq__VHost` | `/` |
@@ -184,7 +184,7 @@ rather than surfacing as a null reference on the first query.
 | `PUT` | `/tasks/{id}/status` | 200 / 400 / 404 / 409 |
 | `DELETE` | `/tasks/{id}` | 204 / 404 |
 
-Statuses travel as numbers — `1` New, `2` InProgress, `3` Completed, `4` Archived — in requests and
+Statuses travel as numbers - `1` New, `2` InProgress, `3` Completed, `4` Archived - in requests and
 responses. The OpenAPI document spells out what each number means, taken from the summaries on the
 enum itself, so the two cannot drift; Swagger UI shows them under the field. The `?status=` query
 also accepts the name, since that binder parses both, but the number is what is documented.
@@ -208,7 +208,7 @@ dotnet test -c Release --filter "Category!=RequiresDocker"   # no Docker needed
 The container-backed suites start their own PostgreSQL through Testcontainers; they do not use the
 container from step 1.
 
-## Задание 2 — daily payments
+## Задание 2 - daily payments
 
 A table function returning one row per calendar day in `[Sd, Ed]` for a client, zero-filled where
 there were no payments, over intervals that may span years.
@@ -220,7 +220,7 @@ Two renderings of the same specification:
 | `sql/postgresql/client_daily_payments.sql` | the one this repository can run, and the one the tests exercise |
 | `sql/sqlserver/ClientDailyPayments.sql` | the literal reading, in the `bigint` / `datetime2(0)` / `money` types the assignment states |
 
-Both were executed against a real server and both worked examples matched row for row — PostgreSQL 16
+Both were executed against a real server and both worked examples matched row for row - PostgreSQL 16
 and SQL Server 2025. `ClientDailyPaymentsTests` applies the PostgreSQL script **as it ships**, seeds
 the assignment's own six rows and asserts both results, so editing the file is what those assertions
 are about. There is no equivalent suite for the T-SQL: that would mean a 1.5 GB SQL Server image in

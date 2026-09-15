@@ -38,7 +38,7 @@ public sealed class PostgresFixture : IAsyncLifetime
     }
 
     /// <summary>Builds a fresh <see cref="ApplicationDbContext"/> against the container.</summary>
-    /// <remarks>A new context per call, so nothing is served from a stale identity map — what a round-trip assertion has to rule out.</remarks>
+    /// <remarks>A new context per call, so nothing is served from a stale identity map - what a round-trip assertion has to rule out.</remarks>
     public ApplicationDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>();

@@ -31,7 +31,7 @@ public sealed class TaskItem : AggregateRoot<TaskItemId>
     /// <summary>What the task is called.</summary>
     public TaskTitle Title { get; private set; } = null!;
 
-    /// <summary>What the task involves. Never null — an absent one is <see cref="TaskDescription.None"/>.</summary>
+    /// <summary>What the task involves. Never null - an absent one is <see cref="TaskDescription.None"/>.</summary>
     public TaskDescription Description { get; private set; } = null!;
 
     /// <summary>Where the task is in its lifecycle.</summary>
@@ -111,7 +111,7 @@ public sealed class TaskItem : AggregateRoot<TaskItemId>
 
     /// <summary>Records that the task is being deleted. Allowed from any status.</summary>
     /// <remarks>
-    /// Only records the intent — the repository removes the row. Nothing is flagged on the
+    /// Only records the intent - the repository removes the row. Nothing is flagged on the
     /// aggregate because deletion here is real; <see cref="TaskItemStatus.Archived"/> is what you
     /// use to keep a task instead.
     /// </remarks>

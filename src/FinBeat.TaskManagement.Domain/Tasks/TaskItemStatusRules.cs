@@ -11,7 +11,7 @@ public static class TaskItemStatusRules
 {
     /// <summary>Whether a task may move from one status to another.</summary>
     /// <returns>
-    /// False for anything not listed below, including a move to the same status — the aggregate
+    /// False for anything not listed below, including a move to the same status - the aggregate
     /// treats that as a no-op before it ever asks.
     /// </returns>
     public static bool CanTransition(TaskItemStatus from, TaskItemStatus to) => (from, to) switch

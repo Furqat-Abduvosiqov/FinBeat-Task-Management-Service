@@ -5,7 +5,7 @@ namespace FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
 /// <summary>A task's title: required, trimmed, at most <see cref="MaxLength"/> characters.</summary>
 /// <remarks>
 /// Private constructor and a get-only property, so <see cref="Create"/> is the only way in. That
-/// also closes the loophole records leave open — there is nothing for <c>with { }</c> to target.
+/// also closes the loophole records leave open - there is nothing for <c>with { }</c> to target.
 /// </remarks>
 public sealed record TaskTitle
 {

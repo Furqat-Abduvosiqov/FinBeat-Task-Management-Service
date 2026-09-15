@@ -6,7 +6,7 @@ instead of surviving until someone notices it in review.
 
 They live in their own project because the rules must reference every layer in the solution. That is
 the correct shape for a suite whose subject is the whole dependency graph, and the wrong shape for a
-unit test project — which is why these moved out of `FinBeat.TaskManagement.UnitTests`.
+unit test project - which is why these moved out of `FinBeat.TaskManagement.UnitTests`.
 
 ## The architecture being enforced
 
@@ -30,7 +30,7 @@ Listener ───────────────────────�
 Two rows carry real decisions rather than following from the layer ordering:
 
 - **`Api` names both `Application` and `Infrastructure`**, skipping a rank. A composition root is the
-  one place allowed to know the concrete adapters — that is where the container binds them.
+  one place allowed to know the concrete adapters - that is where the container binds them.
 - **`Listener` names only `Contracts`.** The specification requires a *separate* listener service.
   Giving it `Application` or `Infrastructure` would hand a log-only service the aggregate, the
   repository and the production database, making "separate service" a naming convention rather than
@@ -56,13 +56,13 @@ Each catches something the others cannot.
 | Package allow-list | `PackageReference` / `FrameworkReference` | technology that arrives as a package, not a project reference |
 
 The first matters most right now. A reference added in the IDE but unused leaves **no trace in the
-compiled output** — the compiler omits it — so while the layers are still thin, reading the `.csproj`
+compiled output** - the compiler omits it - so while the layers are still thin, reading the `.csproj`
 is the only angle that sees anything at all.
 
 ## Layout
 
 ```
-ArchitectureModel.cs        the architecture, written down once — the file you edit
+ArchitectureModel.cs        the architecture, written down once - the file you edit
 Rules/                      the four classes that assert
   ProjectReferenceTests.cs      rules over the declared dependency graph
   LayerDependencyTests.cs       rules over compiled IL
@@ -80,39 +80,39 @@ Two implementation notes worth knowing:
 
 - **`AllowedReferences` is computed**, as the transitive closure of `RequiredReferences`. A second
   hand-kept table would fail *open*: widening a row silently generates fewer test cases, and a theory
-  producing fewer cases reports no error — the suite would go greener while getting weaker.
+  producing fewer cases reports no error - the suite would go greener while getting weaker.
 - **Projects resolve by convention** (`<root>/src/<name>/<name>.csproj`) rather than by searching the
   tree. Searching breaks when a second checkout of the repository sits inside it, which a git
   worktree under the repository root produces: every project name then matches twice.
 
 ## The rules
 
-**`ProjectReferenceTests` — 14 cases.** The load-bearing ones today.
+**`ProjectReferenceTests` - 14 cases.** The load-bearing ones today.
 
-- `Layer_declares_every_reference_the_architecture_requires` (6) — a required reference is missing.
-- `Layer_declares_no_reference_the_architecture_forbids` (6) — dependencies point inward only. This
+- `Layer_declares_every_reference_the_architecture_requires` (6) - a required reference is missing.
+- `Layer_declares_no_reference_the_architecture_forbids` (6) - dependencies point inward only. This
   is the rule that keeps the Listener a separate service.
-- `Dependency_free_layer_declares_no_project_references` (2) — `Domain` and `Contracts` depend on
+- `Dependency_free_layer_declares_no_project_references` (2) - `Domain` and `Contracts` depend on
   nothing.
 
-**`LayerPurityTests` — 5 cases.** Layer ordering cannot stop an ORM or a broker, because those arrive
+**`LayerPurityTests` - 5 cases.** Layer ordering cannot stop an ORM or a broker, because those arrive
 as packages.
 
-- `Inner_layer_declares_no_unapproved_third_party_reference` (3) — an **allow-list**, so it fails
+- `Inner_layer_declares_no_unapproved_third_party_reference` (3) - an **allow-list**, so it fails
   *closed*. A deny-list passes whatever nobody thought to forbid, and nobody adding a package goes
   looking for a list of banned ones. Covers `FrameworkReference` too: one
   `<FrameworkReference Include="Microsoft.AspNetCore.App" />` pulls all of ASP.NET Core into a layer
   without a single `PackageReference`.
-- `Dependency_free_layer_references_only_the_base_class_library` (2) — asks the runtime which
+- `Dependency_free_layer_references_only_the_base_class_library` (2) - asks the runtime which
   directory an assembly actually loaded from, rather than matching a `System.` prefix. That prefix is
   a poor proxy: `System.Data.SqlClient` and `System.Reactive` are ordinary NuGet packages.
 
-**`NamespaceConventionTests` — 4 cases.** Load-bearing, not cosmetic: NetArchTest **cannot see a
+**`NamespaceConventionTests` - 4 cases.** Load-bearing, not cosmetic: NetArchTest **cannot see a
 dependency on a type in the global namespace**, because forbidden names are matched as namespace
 prefixes and such a type has none. Keeping every type under its layer namespace is what closes that
-hole. Hosts are exempt — top-level statements put the entry point in the global namespace.
+hole. Hosts are exempt - top-level statements put the entry point in the global namespace.
 
-**`LayerDependencyTests` — 20 cases.** One case per forbidden (layer, dependency) edge, so a failure
+**`LayerDependencyTests` - 20 cases.** One case per forbidden (layer, dependency) edge, so a failure
 names both ends rather than reporting that a layer depends on something it shouldn't.
 
 ## What these rules do *not* yet prove
@@ -127,7 +127,7 @@ Two known gaps:
 - A `PackageReference` injected from `Directory.Build.props` is invisible to a `.csproj` read.
   Closing it means parsing `obj/project.assets.json`, which is more machinery than the risk warrants.
 - The `TimeProvider` mandate (the domain must never read an ambient clock) is not enforced here.
-  NetArchTest works on type dependencies, and this is a call to a property getter — below this
+  NetArchTest works on type dependencies, and this is a call to a property getter - below this
   suite's resolution. `Microsoft.CodeAnalysis.BannedApiAnalyzers` is the right tool.
 
 ## Running them
@@ -143,6 +143,6 @@ which is the single largest thing missing from this suite.
 
 When you add or change a rule, check that it can actually fail. A rule that cannot go red is worse
 than no rule, because it reports success. The practice used here is to introduce the violation
-deliberately, confirm the expected test fails and names the offender, then revert — for example
+deliberately, confirm the expected test fails and names the offender, then revert - for example
 adding `Listener -> Application` and confirming
 `Layer_declares_no_reference_the_architecture_forbids` fails while everything else stays green.
