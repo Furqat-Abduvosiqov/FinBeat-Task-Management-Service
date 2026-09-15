@@ -1,6 +1,5 @@
 using FinBeat.TaskManagement.Application.Abstractions;
 using FinBeat.TaskManagement.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -11,17 +10,11 @@ namespace FinBeat.TaskManagement.Infrastructure;
 /// <summary>Wires the persistence layer into a service collection.</summary>
 public static class DependencyInjection
 {
-    /// <summary>The connection string <see cref="AddInfrastructure"/> reads, as a configuration key.</summary>
-    /// <remarks>Binds from <c>ConnectionStrings:TaskManagement</c>.</remarks>
+    /// <summary>
+    /// The connection string name <see cref="AddInfrastructure"/> reads: configuration key
+    /// <c>ConnectionStrings:TaskManagement</c>, environment variable <c>ConnectionStrings__TaskManagement</c>.
+    /// </summary>
     public const string ConnectionStringName = "TaskManagement";
-
-    /// <summary>The same connection string, as an environment variable name.</summary>
-    /// <remarks>
-    /// The double-underscore form ASP.NET Core's environment-variable provider binds from. Spelled once here
-    /// so the design-time factory, which reads the variable directly rather than through configuration, cannot
-    /// drift from what the running application binds.
-    /// </remarks>
-    public const string ConnectionStringEnvironmentVariable = $"ConnectionStrings__{ConnectionStringName}";
 
     /// <summary>Registers <see cref="ApplicationDbContext"/>, its <see cref="NpgsqlDataSource"/>, and <see cref="IApplicationDbContext"/>.</summary>
     /// <param name="services">The service collection to register into.</param>
@@ -45,7 +38,7 @@ public static class DependencyInjection
             throw new InvalidOperationException(
                 $"No connection string configured for '{ConnectionStringName}'. Set "
                 + $"'ConnectionStrings:{ConnectionStringName}' in configuration, or the "
-                + $"'{ConnectionStringEnvironmentVariable}' environment variable.");
+                + $"'ConnectionStrings__{ConnectionStringName}' environment variable.");
         }
 
         // A data source owns the connection pool and the cached type catalogue (see

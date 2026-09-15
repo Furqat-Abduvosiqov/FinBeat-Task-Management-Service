@@ -13,7 +13,7 @@ namespace FinBeat.TaskManagement.Infrastructure.Persistence;
 /// <para>
 /// <c>migrations add</c> and <c>migrations script</c> never open a connection, so the connection
 /// string only has to parse. <c>database update</c> does open one, which is what
-/// <see cref="DependencyInjection.ConnectionStringEnvironmentVariable"/> is for: it lets a developer
+/// <see cref="DependencyInjection.ConnectionStringName"/> is for: it lets a developer
 /// point this factory at a real database without editing source.
 /// </para>
 /// <para>This factory runs only under the tooling. Nothing here is read at runtime.</para>
@@ -30,7 +30,7 @@ public sealed class DesignTimeApplicationDbContextFactory : IDesignTimeDbContext
     public ApplicationDbContext CreateDbContext(string[] args)
     {
         var connectionString =
-            Environment.GetEnvironmentVariable(DependencyInjection.ConnectionStringEnvironmentVariable)
+            Environment.GetEnvironmentVariable(DependencyInjection.ConnectionStringName)
             ?? FallbackConnectionString;
 
         var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
