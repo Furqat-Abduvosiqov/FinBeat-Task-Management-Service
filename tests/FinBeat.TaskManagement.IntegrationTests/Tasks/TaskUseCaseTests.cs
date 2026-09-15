@@ -226,6 +226,23 @@ public sealed class TaskUseCaseTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task A_status_outside_the_enum_is_rejected_by_the_handler_too()
+    {
+        // The API rejects this at the edge with FluentValidation. This is the backstop for every
+        // other caller, and the reason the handler keeps its own check.
+        var created = await CreateAsync("Undefined status at the handler");
+
+        await using var context = fixture.CreateContext();
+
+        var result = await new ChangeTaskStatusHandler(context, new RecordingIntegrationEventPublisher(), Clock.New())
+            .HandleAsync(new ChangeTaskStatusCommand(created.Id, (TaskItemStatus)99));
+
+        result.IsFailure.ShouldBeTrue();
+        result.Error!.Code.ShouldBe("task.status.unknown");
+        result.Error.Type.ShouldBe(ErrorType.Validation);
+    }
+
+    [Fact]
     public async Task Deleting_a_task_removes_the_row_and_publishes_TaskDeleted()
     {
         var created = await CreateAsync("Cancel the subscription");

@@ -20,6 +20,12 @@
       OpenApiString. Still MIT.
     -->
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="8.1.4" />
+    <!--
+      Request validation at the API edge. Apache-2.0 on 12.1.1, checked against the nuspec rather
+      than assumed - two packages in this file already moved licence on a version bump.
+    -->
+    <PackageVersion Include="FluentValidation" Version="12.1.1" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
 
     <!-- Listener -->
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.1" />

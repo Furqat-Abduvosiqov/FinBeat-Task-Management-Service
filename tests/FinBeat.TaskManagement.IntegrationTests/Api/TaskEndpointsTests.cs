@@ -3,7 +3,10 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using FinBeat.TaskManagement.Api;
+using FinBeat.TaskManagement.Api.Endpoints;
+using FinBeat.TaskManagement.Api.Endpoints.Validation;
 using FinBeat.TaskManagement.Domain.Tasks;
+using FinBeat.TaskManagement.Domain.Tasks.ValueObjects;
 using FinBeat.TaskManagement.IntegrationTests.Persistence;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
@@ -50,16 +53,29 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
         (await ReadJsonAsync(followed)).GetProperty("id").GetString().ShouldBe(Id(created).ToString());
     }
 
-    [Fact]
-    public async Task Creating_a_task_without_a_title_returns_400_carrying_the_error_code()
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public async Task A_request_without_a_title_is_rejected_before_the_domain_sees_it(string? title)
     {
-        var response = await _client.PostAsJsonAsync("/tasks", new { title = "   ", description = (string?)null });
+        var response = await _client.PostAsJsonAsync("/tasks", new { title, description = (string?)null });
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType?.MediaType.ShouldBe("application/problem+json");
 
-        var problem = await ReadJsonAsync(response);
-        problem.GetProperty("code").GetString().ShouldBe("task.title.invalid");
+        ShouldReportFieldError(await ReadJsonAsync(response), nameof(CreateTaskRequest.Title));
+    }
+
+    [Fact]
+    public async Task A_title_past_the_length_the_column_allows_is_rejected()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/tasks",
+            new { title = new string('a', TaskTitle.MaxLength + 1), description = (string?)null });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        ShouldReportFieldError(await ReadJsonAsync(response), nameof(CreateTaskRequest.Title));
     }
 
     [Fact]
@@ -106,12 +122,14 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task A_status_outside_the_enum_returns_400_rather_than_409()
     {
+        // A value nobody declared is a malformed request, not a state conflict - retry-on-409
+        // clients would loop on the latter.
         var created = await CreateAsync("Undefined status");
 
         var response = await _client.PutAsJsonAsync($"/tasks/{Id(created)}/status", new { status = 99 });
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        (await ReadJsonAsync(response)).GetProperty("code").GetString().ShouldBe("task.status.unknown");
+        ShouldReportFieldError(await ReadJsonAsync(response), nameof(ChangeTaskStatusRequest.Status));
     }
 
     [Fact]
@@ -183,6 +201,13 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
     }
 
     private static Guid Id(JsonElement task) => task.GetProperty("id").GetGuid();
+
+    /// <summary>Asserts the body names the offending field and still carries the shared error code.</summary>
+    private static void ShouldReportFieldError(JsonElement problem, string field)
+    {
+        problem.GetProperty("code").GetString().ShouldBe(ValidationFilter<object>.ErrorCode);
+        problem.GetProperty("errors").GetProperty(field).EnumerateArray().ShouldNotBeEmpty();
+    }
 
     private static Task<JsonElement> ReadJsonAsync(HttpResponseMessage response) => response.ReadJsonAsync();
 

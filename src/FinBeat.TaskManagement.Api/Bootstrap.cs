@@ -1,6 +1,8 @@
 using System.Reflection;
 using System.Text.Json.Serialization;
 using FinBeat.TaskManagement.Api.Endpoints;
+using FinBeat.TaskManagement.Api.Endpoints.Validation;
+using FluentValidation;
 using FinBeat.TaskManagement.Application.Tasks;
 using FinBeat.TaskManagement.Application.Tasks.Commands;
 using FinBeat.TaskManagement.Application.Tasks.Queries;
@@ -56,6 +58,8 @@ internal static class Bootstrap
         // that is the minimal-API serializer - and would otherwise document every enum as an integer.
         builder.Services.Configure<JsonOptions>(options =>
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+        builder.Services.AddValidatorsFromAssemblyContaining<CreateTaskRequestValidator>(includeInternalTypes: true);
 
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddApiDocumentation();

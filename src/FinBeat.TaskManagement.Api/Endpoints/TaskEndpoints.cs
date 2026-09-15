@@ -2,6 +2,7 @@ using FinBeat.TaskManagement.Application.Tasks;
 using FinBeat.TaskManagement.Application.Tasks.Commands;
 using FinBeat.TaskManagement.Application.Tasks.Queries;
 using FinBeat.TaskManagement.Domain.Tasks;
+using FinBeat.TaskManagement.Api.Endpoints.Validation;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinBeat.TaskManagement.Api.Endpoints;
@@ -34,7 +35,8 @@ internal static class TaskEndpoints
             .WithName("CreateTask")
             .WithSummary("Creates a task")
             .WithDescription("The task starts in the New status, and its created and modified timestamps are equal.")
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .AddEndpointFilter<ValidationFilter<CreateTaskRequest>>()
+            .ProducesValidationProblem();
 
         tasks.MapGet("/", ListAsync)
             .WithName("GetTasks")
@@ -57,7 +59,8 @@ internal static class TaskEndpoints
             .WithName("UpdateTaskDetails")
             .WithSummary("Replaces a task's title and description")
             .WithDescription("Submitting the values the task already holds changes nothing and raises no event, so the history stays honest.")
-            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .AddEndpointFilter<ValidationFilter<UpdateTaskDetailsRequest>>()
+            .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         tasks.MapPut("/{id:guid}/status", ChangeStatusAsync)
@@ -67,7 +70,8 @@ internal static class TaskEndpoints
                 "Allowed moves: New to InProgress, Completed or Archived; InProgress to New, Completed or Archived; "
                 + "Completed to InProgress or Archived; Archived to New. Anything else is a conflict. Setting the "
                 + "status a task already holds changes nothing and raises no event.")
-            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .AddEndpointFilter<ValidationFilter<ChangeTaskStatusRequest>>()
+            .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
