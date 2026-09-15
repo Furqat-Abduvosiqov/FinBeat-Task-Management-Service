@@ -13,10 +13,8 @@ public sealed class ApplicationDbContextRegistrationTests(ModelFixture fixture)
     [Fact]
     public void IApplicationDbContext_and_ApplicationDbContext_resolve_to_the_same_instance_within_one_scope()
     {
-        // Two separate registrations would mean two separate change trackers: a use case depending on
-        // IApplicationDbContext and anything else depending on ApplicationDbContext would each see
-        // their own, and SaveChangesAsync would report success while saving nothing the use case
-        // actually changed.
+        // Two separate registrations would mean two change trackers, so SaveChangesAsync could
+        // report success while saving nothing the use case actually changed.
         using var scope = fixture.Provider.CreateScope();
 
         IApplicationDbContext viaInterface = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();

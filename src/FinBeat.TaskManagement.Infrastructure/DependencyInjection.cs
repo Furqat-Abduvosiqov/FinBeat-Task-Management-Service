@@ -9,10 +9,7 @@ namespace FinBeat.TaskManagement.Infrastructure;
 /// <summary>Wires the persistence layer into a service collection.</summary>
 public static class DependencyInjection
 {
-    /// <summary>
-    /// The connection string name <see cref="AddInfrastructure"/> reads: configuration key
-    /// <c>ConnectionStrings:TaskManagement</c>, environment variable <c>ConnectionStrings__TaskManagement</c>.
-    /// </summary>
+    /// <summary>The connection string name, read from <c>ConnectionStrings:TaskManagement</c>.</summary>
     public const string ConnectionStringName = "TaskManagement";
 
     /// <summary>Registers <see cref="ApplicationDbContext"/> and <see cref="IApplicationDbContext"/>.</summary>
@@ -28,8 +25,6 @@ public static class DependencyInjection
 
         var connectionString = configuration.GetConnectionString(ConnectionStringName);
 
-        // Fail at startup with the missing key named, rather than a null reference from inside Npgsql
-        // on whichever request happens to run the first query.
         if (string.IsNullOrWhiteSpace(connectionString))
         {
             throw new InvalidOperationException(
@@ -38,15 +33,9 @@ public static class DependencyInjection
                 + $"'ConnectionStrings__{ConnectionStringName}' environment variable.");
         }
 
-        // The provider and the connection string are the whole configuration. Snake-case naming is
-        // applied by the context itself, in OnConfiguring, so every path that builds a context gets an
-        // identical model whether or not it came through this method.
         services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(connectionString));
 
-        // Resolves the scoped context AddDbContext already registered, rather than constructing a
-        // second one. AddScoped<IApplicationDbContext, ApplicationDbContext>() would give one request
-        // two contexts: a use case would track its changes on one and call SaveChangesAsync on the
-        // other, which saves nothing and reports success.
+        // Resolves the context AddDbContext registered rather than constructing a second one.
         services.AddScoped<IApplicationDbContext>(serviceProvider =>
             serviceProvider.GetRequiredService<ApplicationDbContext>());
 
