@@ -71,6 +71,7 @@ public sealed class TaskItemMappingTests(ModelFixture fixture)
         // Order matters: one composite index, not two single-column ones.
         index.Properties.Select(property => property.Name)
             .ShouldBe([nameof(TaskItem.Status), nameof(TaskItem.CreatedAt)]);
+        
         index.GetDatabaseName().ShouldBe("ix_tasks_status_created_at");
         index.IsUnique.ShouldBeFalse();
     }
