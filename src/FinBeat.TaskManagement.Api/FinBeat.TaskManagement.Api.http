@@ -1,6 +1,0 @@
-@FinBeat.TaskManagement.Api_HostAddress = http://localhost:5106
-
-GET {{FinBeat.TaskManagement.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

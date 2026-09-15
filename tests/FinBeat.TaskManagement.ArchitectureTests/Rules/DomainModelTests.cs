@@ -83,9 +83,14 @@ public sealed class DomainModelTests
 
     // Value types included: filtering to classes would skip an event declared as a record struct,
     // and the guards above would still pass on the strength of the existing ones.
+    //
+    // Abstract types included too, which is the point of excluding only interfaces here. Filtering on
+    // IsAbstract would let an abstract BaseDomainEvent : IDomainEvent through untouched, and its
+    // sealed subclasses would satisfy every other rule - producing exactly the event hierarchy the
+    // sealing rule exists to prevent. An abstract event is not sealed, so it now fails that rule.
     private static Type[] DomainEventTypes() =>
         Domain.GetTypes()
-            .Where(type => type is { IsPublic: true, IsAbstract: false })
+            .Where(type => type is { IsPublic: true, IsInterface: false })
             .Where(ImplementsDomainEvent)
             .ToArray();
 

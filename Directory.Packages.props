@@ -39,6 +39,29 @@
       carries a newer Mono.Cecil. Same fluent API and same NetArchTest.Rules namespace.
     -->
     <PackageVersion Include="NetArchTest.eNhancedEdition" Version="1.4.5" />
+
+    <!--
+      Infrastructure: the PostgreSQL provider, the snake_case rewriter, and the migration
+      scaffolder. Infrastructure is deliberately absent from
+      ArchitectureModel.AllowedExternalReferences, so this is the layer where a provider belongs.
+    -->
+    <!--
+      Named explicitly only to unify the graph upward. The Npgsql provider 8.0.11 asks for Relational
+      8.0.11 while the Design package asks for 8.0.31, and Design is PrivateAssets="all" so it cannot
+      settle the difference for anything downstream. Without this the Api resolves the lower one and
+      the build warns (MSB3277).
+    -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.31" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
+    <PackageVersion Include="EFCore.NamingConventions" Version="8.0.3" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.31" />
+    <!-- IConfiguration for AddInfrastructure. EF Core does not bring it transitively. -->
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="8.0.0" />
+
+    <!-- Integration tests: a throwaway PostgreSQL, and configuration to drive AddInfrastructure. -->
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.1.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
   </ItemGroup>
 
 </Project>
