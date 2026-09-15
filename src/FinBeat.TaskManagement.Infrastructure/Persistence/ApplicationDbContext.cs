@@ -41,11 +41,8 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
         // The EF-model half of the enum mapping: this annotation is what puts CREATE TYPE
         // task_item_status into the migration. The ADO.NET half lives in
         // ApplicationDbContextOptions.CreateDataSource, and the two are tied together by sharing
-        // PostgresEnumMapping's name and translator.
-        modelBuilder.HasPostgresEnum<TaskItemStatus>(
-            schema: null,
-            name: PostgresEnumMapping.TaskItemStatusTypeName,
-            nameTranslator: PostgresEnumMapping.NameTranslator);
+        // PostgresEnumMapping's single type name.
+        modelBuilder.HasPostgresEnum<TaskItemStatus>(name: PostgresEnumMapping.TaskItemStatusTypeName);
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 

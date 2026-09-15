@@ -20,7 +20,7 @@ public sealed class MigrationDriftTests
         // This is the same comparison `dotnet ef migrations has-pending-model-changes` performs. It
         // lives here as well because there is no CI in this repository to run the CLI form.
         var options = new DbContextOptionsBuilder<ApplicationDbContext>();
-        ApplicationDbContextOptions.ConfigureForSchemaOperations(options, ModelFixture.ConnectionString);
+        ApplicationDbContextOptions.ConfigureFromConnectionString(options, ModelFixture.ConnectionString);
 
         using var context = new ApplicationDbContext(options.Options);
 

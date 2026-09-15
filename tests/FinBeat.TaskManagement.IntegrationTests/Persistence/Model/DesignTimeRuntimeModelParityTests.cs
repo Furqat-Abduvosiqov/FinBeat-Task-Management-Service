@@ -26,7 +26,7 @@ public sealed class DesignTimeRuntimeModelParityTests : IClassFixture<ModelFixtu
         // store type from, so the status column scaffolded as integer while the running application
         // expected task_item_status - and the migration still created the unused type.
         var designTimeOptions = new DbContextOptionsBuilder<ApplicationDbContext>();
-        ApplicationDbContextOptions.ConfigureForSchemaOperations(designTimeOptions, ModelFixture.ConnectionString);
+        ApplicationDbContextOptions.ConfigureFromConnectionString(designTimeOptions, ModelFixture.ConnectionString);
 
         using var designTimeContext = new ApplicationDbContext(designTimeOptions.Options);
 

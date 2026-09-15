@@ -41,7 +41,7 @@ public sealed class PostgresFixture : IAsyncLifetime
         // NpgsqlDataSource yet - so CREATE TYPE task_item_status is the first thing to touch the
         // connection, before anything could have cached a type catalogue without it.
         var schemaOptions = new DbContextOptionsBuilder<ApplicationDbContext>();
-        ApplicationDbContextOptions.ConfigureForSchemaOperations(schemaOptions, connectionString);
+        ApplicationDbContextOptions.ConfigureFromConnectionString(schemaOptions, connectionString);
 
         await using (var schemaContext = new ApplicationDbContext(schemaOptions.Options))
         {

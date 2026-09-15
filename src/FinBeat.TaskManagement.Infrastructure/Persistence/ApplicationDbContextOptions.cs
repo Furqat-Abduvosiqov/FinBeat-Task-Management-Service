@@ -16,7 +16,7 @@ namespace FinBeat.TaskManagement.Infrastructure.Persistence;
 /// </remarks>
 public static class ApplicationDbContextOptions
 {
-    /// <summary>Builds the <see cref="NpgsqlDataSource"/> the application queries through.</summary>
+    /// <summary>Builds the <see cref="NpgsqlDataSource"/> a context reads and writes through.</summary>
     /// <param name="connectionString">The PostgreSQL connection string.</param>
     /// <param name="loggerFactory">
     /// Logging for the data source, or <see langword="null"/> where none is wired up, such as at design time.
@@ -35,7 +35,7 @@ public static class ApplicationDbContextOptions
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
         var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-        dataSourceBuilder.MapEnum<TaskItemStatus>(PostgresEnumMapping.TaskItemStatusTypeName, PostgresEnumMapping.NameTranslator);
+        dataSourceBuilder.MapEnum<TaskItemStatus>(PostgresEnumMapping.TaskItemStatusTypeName);
 
         if (loggerFactory is not null)
         {
@@ -45,7 +45,7 @@ public static class ApplicationDbContextOptions
         return dataSourceBuilder.Build();
     }
 
-    /// <summary>Configures a context to run against an already-built <see cref="NpgsqlDataSource"/>.</summary>
+    /// <summary>Configures a context against a <see cref="NpgsqlDataSource"/> the caller owns.</summary>
     /// <param name="builder">The options builder to configure.</param>
     /// <param name="dataSource">The data source, built by <see cref="CreateDataSource"/>.</param>
     public static void Configure(DbContextOptionsBuilder builder, NpgsqlDataSource dataSource)
@@ -54,32 +54,22 @@ public static class ApplicationDbContextOptions
         ApplyNamingConvention(builder);
     }
 
-    /// <summary>Configures a context for schema operations: generating or applying migrations.</summary>
+    /// <summary>Configures a context from a connection string, building and owning the data source itself.</summary>
     /// <param name="builder">The options builder to configure.</param>
     /// <param name="connectionString">The PostgreSQL connection string.</param>
     /// <exception cref="ArgumentException"><paramref name="connectionString"/> is null, empty, or white space.</exception>
     /// <remarks>
-    /// <para>
-    /// This goes through a data source like every other path, and it has to. On this provider version the store
-    /// type of a CLR enum is resolved from the data source's <c>MapEnum</c> registration, not from the
-    /// <c>HasPostgresEnum</c> annotation on the model — that annotation only writes <c>CREATE TYPE</c> into the
-    /// migration. Configure schema operations without a data source and the model still creates the type but maps
-    /// the column to <c>integer</c>, so the migration disagrees with the runtime model. The registration is
-    /// client-side and costs no connection, which is why <c>migrations add</c> still needs no database.
-    /// </para>
-    /// <para>
-    /// The data source built here is deliberately not disposed: it lives as long as the options do, which for a
-    /// <c>dotnet ef</c> invocation is until the process exits. Callers that go on to read and write rows in the
-    /// same process — the test fixture does — must dispose it after migrating and build a fresh one, or they
-    /// inherit a type catalogue cached before the migration created the enum.
-    /// </para>
+    /// Identical to <see cref="Configure"/> in every respect but one: the data source is created here rather than
+    /// passed in, and nothing disposes it. For a <c>dotnet ef</c> invocation that is the whole process lifetime and
+    /// costs nothing. A caller that goes on to read and write rows in the same process — the test fixture does —
+    /// wants <see cref="Configure"/> with a data source it can dispose, or it inherits a type catalogue cached
+    /// before the migration created the enum.
     /// </remarks>
-    public static void ConfigureForSchemaOperations(DbContextOptionsBuilder builder, string connectionString) =>
+    public static void ConfigureFromConnectionString(DbContextOptionsBuilder builder, string connectionString) =>
         Configure(builder, CreateDataSource(connectionString));
 
-    // Both Configure and ConfigureForSchemaOperations call this, so the model is identical no matter which one
-    // built the options. Calling it before or after UseNpgsql makes no difference: each adds its own options
-    // extension, and neither reads the other's.
+    // Every path calls this, so the model is identical no matter which one built the options. Calling it before or
+    // after UseNpgsql makes no difference: each adds its own options extension, and neither reads the other's.
     private static void ApplyNamingConvention(DbContextOptionsBuilder builder) =>
         builder.UseSnakeCaseNamingConvention(CultureInfo.InvariantCulture);
 }
