@@ -229,10 +229,9 @@ docker exec finbeat-taskmanagement-postgres-1 \
   -c "SELECT * FROM client.get_daily_payments(1, '2022-01-02', '2022-01-07');"
 ```
 
-Both avoid `date(dt) = day`, which would leave `(client_id, dt)` unusable and scan every payment the
-client ever made; the join is a half-open range on the raw column instead. Days come from
-`generate_series` in PostgreSQL and from a cross-joined tally in T-SQL — not a recursive CTE, because
-an inline table function cannot carry `OPTION (MAXRECURSION 0)` and recursion would stop at 100 days.
+The scripts carry no comments. `sql/README.md` explains the design in Russian: the type mapping, why
+the join is a half-open range rather than a cast, where the days come from, and what the index,
+`STABLE`, `PARALLEL SAFE` and the absent `SET search_path` are each doing.
 
 ## Not included
 
