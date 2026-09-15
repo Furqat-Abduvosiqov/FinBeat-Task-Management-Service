@@ -11,7 +11,7 @@ namespace FinBeat.TaskManagement.IntegrationTests.Persistence;
 public sealed class PostgresFixture : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
+        .WithImage(TestImages.PostgreSql)
         .Build();
 
     private NpgsqlDataSource? _dataSource;
