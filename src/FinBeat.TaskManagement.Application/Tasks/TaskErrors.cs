@@ -13,6 +13,14 @@ public static class TaskErrors
     public static Error NotFound(Guid taskId) =>
         new("task.not-found", $"No task was found with id '{taskId}'.", ErrorType.NotFound);
 
+    /// <summary>The page asked for is outside what a caller may request.</summary>
+    /// <param name="maxPageSize">The largest page size on offer.</param>
+    public static Error InvalidPaging(int maxPageSize) =>
+        new(
+            "tasks.paging.invalid",
+            $"Page must be 1 or greater and page size between 1 and {maxPageSize}.",
+            ErrorType.Validation);
+
     /// <summary>Someone else changed the task between this request reading it and saving.</summary>
     /// <param name="taskId">The task that moved underneath the request.</param>
     public static Error ConcurrentlyModified(Guid taskId) =>

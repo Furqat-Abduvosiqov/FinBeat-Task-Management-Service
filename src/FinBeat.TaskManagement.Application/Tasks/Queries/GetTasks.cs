@@ -5,20 +5,32 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinBeat.TaskManagement.Application.Tasks.Queries;
 
-/// <summary>Asks for the tasks, oldest first.</summary>
+/// <summary>Asks for a page of tasks, oldest first.</summary>
 /// <param name="Status">Return only tasks in this status, or null for all of them.</param>
-public sealed record GetTasksQuery(TaskItemStatus? Status = null);
+/// <param name="Page">Which page to return, counting from one.</param>
+/// <param name="PageSize">How many tasks to return, at most <see cref="GetTasksHandler.MaxPageSize"/>.</param>
+public sealed record GetTasksQuery(
+    TaskItemStatus? Status = null,
+    int Page = 1,
+    int PageSize = GetTasksHandler.DefaultPageSize);
 
-/// <summary>Reads the tasks.</summary>
+/// <summary>Reads a page of tasks.</summary>
 /// <param name="context">The database the tasks are read from.</param>
 public sealed class GetTasksHandler(IApplicationDbContext context)
 {
-    /// <summary>Reads the tasks.</summary>
-    /// <param name="query">The status to filter by, if any.</param>
+    /// <summary>The page size used when a caller does not ask for one.</summary>
+    public const int DefaultPageSize = 20;
+
+    /// <summary>The largest page a caller may ask for.</summary>
+    /// <remarks>A ceiling rather than a clamp: silently returning fewer rows than asked for is harder to notice than being told no.</remarks>
+    public const int MaxPageSize = 100;
+
+    /// <summary>Reads the page.</summary>
+    /// <param name="query">The status to filter by, and which page to return.</param>
     /// <param name="cancellationToken">Cancels the operation.</param>
-    /// <returns>The matching tasks, oldest first.</returns>
+    /// <returns>The matching page, oldest first, or a validation error.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="query"/> is null.</exception>
-    public async Task<Result<IReadOnlyList<TaskResponse>>> HandleAsync(
+    public async Task<Result<Page<TaskResponse>>> HandleAsync(
         GetTasksQuery query,
         CancellationToken cancellationToken = default)
     {
@@ -26,7 +38,12 @@ public sealed class GetTasksHandler(IApplicationDbContext context)
 
         if (query.Status is { } requested && !Enum.IsDefined(requested))
         {
-            return Result.Failure<IReadOnlyList<TaskResponse>>(TaskErrors.UnknownStatus(requested));
+            return Result.Failure<Page<TaskResponse>>(TaskErrors.UnknownStatus(requested));
+        }
+
+        if (query.Page < 1 || query.PageSize < 1 || query.PageSize > MaxPageSize)
+        {
+            return Result.Failure<Page<TaskResponse>>(TaskErrors.InvalidPaging(MaxPageSize));
         }
 
         var tasks = context.Tasks.AsNoTracking();
@@ -37,8 +54,23 @@ public sealed class GetTasksHandler(IApplicationDbContext context)
             tasks = tasks.Where(task => task.Status == status);
         }
 
-        var matches = await tasks.OrderBy(task => task.CreatedAt).ToListAsync(cancellationToken);
+        var totalItems = await tasks.LongCountAsync(cancellationToken);
 
-        return Result.Success<IReadOnlyList<TaskResponse>>(matches.ConvertAll(TaskResponse.From));
+        var matches = await tasks
+            // Id breaks ties: CreatedAt is not unique, and without a total order two pages can repeat
+            // a task and skip another between them. Defensive rather than demonstrated - PostgreSQL
+            // happens to answer this table in a stable order either way, so no test here can fail on
+            // it, and a test that cannot fail would only advertise a guarantee it does not provide.
+            .OrderBy(task => task.CreatedAt)
+            .ThenBy(task => task.Id)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToListAsync(cancellationToken);
+
+        return Result.Success(new Page<TaskResponse>(
+            matches.ConvertAll(TaskResponse.From),
+            query.Page,
+            query.PageSize,
+            totalItems));
     }
 }

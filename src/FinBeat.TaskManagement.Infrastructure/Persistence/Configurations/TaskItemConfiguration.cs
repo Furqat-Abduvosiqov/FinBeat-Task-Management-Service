@@ -46,6 +46,10 @@ internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
 
         builder.HasIndex(task => new { task.Status, task.CreatedAt });
 
+        // The unfiltered page. The composite above leads with status, so it cannot answer a query
+        // that asks for every status in creation order - that would sort the whole table per page.
+        builder.HasIndex(task => new { task.CreatedAt, task.Id });
+
         // PostgreSQL's own row version. Without it two requests can load the same task, both save,
         // and the last write wins while both events still reach the outbox - leaving a consumer told
         // of a change the row never kept.

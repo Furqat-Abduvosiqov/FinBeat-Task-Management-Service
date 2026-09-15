@@ -83,7 +83,7 @@ rather than surfacing as a null reference on the first query.
 | | | |
 |---|---|---|
 | `POST` | `/tasks` | 201 with a `Location` header |
-| `GET` | `/tasks?status=` | 200, oldest first |
+| `GET` | `/tasks?status=&page=&pageSize=` | 200, one page, oldest first |
 | `GET` | `/tasks/{id}` | 200 / 404 |
 | `PUT` | `/tasks/{id}` | 200 / 400 / 404 |
 | `PUT` | `/tasks/{id}/status` | 200 / 400 / 404 / 409 |
@@ -124,6 +124,5 @@ docker exec finbeat-postgres psql -U postgres -d finbeat \
 - **Task ownership.** The assignment says "a user's tasks", but there is no authentication here and
   no `UserId` on the aggregate, so every task is visible to every caller. Adding it means choosing
   where identity comes from, which is a decision rather than an omission.
-- **Paging.** `GET /tasks` returns every matching task.
 - **Consumer-side deduplication.** The outbox gives at-least-once delivery, and the listener owns no
   database to hold an inbox, so a redelivery is logged twice.

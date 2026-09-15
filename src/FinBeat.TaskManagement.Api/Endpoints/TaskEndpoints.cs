@@ -1,9 +1,10 @@
+using FinBeat.TaskManagement.Api.Endpoints.Validation;
+using FinBeat.TaskManagement.Api.OpenApi;
+using FinBeat.TaskManagement.Application.Results;
 using FinBeat.TaskManagement.Application.Tasks;
 using FinBeat.TaskManagement.Application.Tasks.Commands;
 using FinBeat.TaskManagement.Application.Tasks.Queries;
 using FinBeat.TaskManagement.Domain.Tasks;
-using FinBeat.TaskManagement.Api.Endpoints.Validation;
-using FinBeat.TaskManagement.Api.OpenApi;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinBeat.TaskManagement.Api.Endpoints;
@@ -42,11 +43,19 @@ internal static class TaskEndpoints
         tasks.MapGet("/", ListAsync)
             .WithName("GetTasks")
             .WithSummary("Lists tasks, oldest first")
-            .WithDescription("Pass a status to return only tasks in it. Archived tasks are included unless a status narrows them out.")
+            .WithDescription(
+                "One page at a time, ordered by creation and then by id so pages neither repeat a task "
+                + "nor skip one. Pass a status to return only tasks in it; Archived tasks are included "
+                + $"unless a status narrows them out. Page size is at most {GetTasksHandler.MaxPageSize}.")
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .WithOpenApi(operation =>
             {
                 OpenApiConventions.Describe(operation, "status", "Return only tasks in this status. Omit for all of them.");
+                OpenApiConventions.Describe(operation, "page", "Which page to return, counting from one.");
+                OpenApiConventions.Describe(
+                    operation,
+                    "pageSize",
+                    $"How many tasks to return, from 1 to {GetTasksHandler.MaxPageSize}.");
 
                 return operation;
             });
@@ -99,12 +108,14 @@ internal static class TaskEndpoints
             : result.Error!.ToProblem();
     }
 
-    private static async Task<Results<Ok<IReadOnlyList<TaskResponse>>, ProblemHttpResult>> ListAsync(
+    private static async Task<Results<Ok<Page<TaskResponse>>, ProblemHttpResult>> ListAsync(
         TaskItemStatus? status,
         GetTasksHandler handler,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int page = 1,
+        int pageSize = GetTasksHandler.DefaultPageSize)
     {
-        var result = await handler.HandleAsync(new GetTasksQuery(status), cancellationToken);
+        var result = await handler.HandleAsync(new GetTasksQuery(status, page, pageSize), cancellationToken);
 
         return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error!.ToProblem();
     }

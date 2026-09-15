@@ -202,9 +202,25 @@ public sealed class TaskEndpointsTests(PostgresFixture fixture) : IAsyncLifetime
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        var tasks = (await ReadJsonAsync(response)).EnumerateArray().ToArray();
+        var page = await ReadJsonAsync(response);
+        var tasks = page.GetProperty("items").EnumerateArray().ToArray();
+
         tasks.ShouldAllBe(task => task.GetProperty("status").GetString() == nameof(TaskItemStatus.Archived));
         tasks.ShouldNotContain(task => task.GetProperty("id").GetString() == Id(created).ToString());
+
+        // The envelope is what lets a client ask for the next page.
+        page.GetProperty("number").GetInt32().ShouldBe(1);
+        page.GetProperty("size").GetInt32().ShouldBe(20);
+        page.GetProperty("totalItems").GetInt64().ShouldBeGreaterThanOrEqualTo(tasks.Length);
+    }
+
+    [Fact]
+    public async Task A_page_size_past_the_ceiling_is_refused()
+    {
+        var response = await _client.GetAsync("/tasks?pageSize=1000");
+
+        await ShouldBeAProblemAsync(response);
+        (await ReadJsonAsync(response)).GetProperty("code").GetString().ShouldBe("tasks.paging.invalid");
     }
 
     private static Guid Id(JsonElement task) => task.GetProperty("id").GetGuid();
