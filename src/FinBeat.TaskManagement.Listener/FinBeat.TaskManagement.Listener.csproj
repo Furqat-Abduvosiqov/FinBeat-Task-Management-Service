@@ -6,6 +6,9 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.Hosting"/>
+        <!-- Consuming the events the Api publishes. No EF Core here: this deployable owns no database. -->
+        <PackageReference Include="MassTransit"/>
+        <PackageReference Include="MassTransit.RabbitMQ"/>
     </ItemGroup>
 
     <!-- Observability. Serilog.AspNetCore despite the name - it carries AddSerilog for a non-Web host. -->
