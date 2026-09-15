@@ -1,7 +1,6 @@
 using FinBeat.TaskManagement.Application.Tasks.Commands;
 using FinBeat.TaskManagement.Contracts.Tasks;
 using FinBeat.TaskManagement.Infrastructure;
-using FinBeat.TaskManagement.IntegrationTests.Persistence.Model;
 using FinBeat.TaskManagement.IntegrationTests.Persistence.Postgres;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -18,7 +17,7 @@ public sealed class TaskOutboxTests(PostgresFixture fixture)
     public async Task Creating_a_task_writes_its_event_to_the_outbox()
     {
         var services = new ServiceCollection();
-        services.AddInfrastructure(ModelFixture.BuildConfiguration(fixture.ConnectionString));
+        services.AddInfrastructure(TestConfiguration.ForDatabase(fixture.ConnectionString));
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<CreateTaskHandler>();
 

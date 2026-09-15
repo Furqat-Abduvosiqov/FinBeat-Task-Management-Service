@@ -1,6 +1,4 @@
 using FinBeat.TaskManagement.Infrastructure;
-using FinBeat.TaskManagement.Infrastructure.Persistence;
-using FinBeat.TaskManagement.IntegrationTests.Persistence.Model;
 using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,8 +40,7 @@ public sealed class RabbitMqRegistrationTests
 
     private static ServiceProvider BuildProvider(Dictionary<string, string?> settings)
     {
-        settings[$"{DatabaseOptions.SectionName}:{DatabaseOptions.ConnectionStringName}"] =
-            ModelFixture.ConnectionString;
+        settings[TestConfiguration.ConnectionStringKey] = TestConfiguration.UnusedConnectionString;
 
         var services = new ServiceCollection();
         services.AddInfrastructure(new ConfigurationBuilder().AddInMemoryCollection(settings).Build());
