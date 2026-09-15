@@ -1,248 +1,207 @@
 # FinBeat Task Management
 
-A task management service: create, read, update and delete tasks over HTTP, with every change
-published as an integration event and logged by a separate listener.
+Сервис управления задачами: CRUD по HTTP, каждое изменение публикуется как интеграционное событие,
+отдельный слушатель их получает и логирует.
 
-## Layout
-
-```
-src/
-  FinBeat.TaskManagement.Domain          the aggregate and its rules. Zero dependencies.
-  FinBeat.TaskManagement.Contracts       the wire format. Zero dependencies.
-  FinBeat.TaskManagement.Application     use cases, on Result<T>. EF Core and nothing else.
-  FinBeat.TaskManagement.Infrastructure  PostgreSQL, MassTransit, the transactional outbox.
-  FinBeat.TaskManagement.Api             minimal API endpoints, validation, Swagger.
-  FinBeat.TaskManagement.Listener        consumes the events and logs them. Contracts only.
-sql/                                     Задание 2, the daily-payments table function.
-tests/                                   architecture, unit and integration suites.
-```
-
-Dependencies point inward. `Listener` is a separate deployable and shares only the wire format with
-the API, which is why it references `Contracts` and nothing else.
-
-## Prerequisites
-
-- Docker, with Compose v2 - enough on its own to run the whole stack
-- .NET SDK 8.0.4xx (pinned in `global.json`) - only to run the hosts from source, or the tests
-
-## Running it
-
-### Everything in containers
+## Быстрый старт
 
 ```bash
 docker compose up -d --build
 ```
 
-| | |
+| Что | Где |
 |---|---|
-| API | http://localhost:8080 - Swagger at `/swagger` |
-| RabbitMQ management | http://localhost:15672 - `guest` / `guest` |
+| API | http://localhost:8080, Swagger на `/swagger` |
+| RabbitMQ | http://localhost:15672, `guest` / `guest` |
 | Jaeger | http://localhost:16686 |
 
-Compose starts them in the order the system needs rather than all at once:
+Порты слушают только `127.0.0.1`. Чтобы открыть стенд наружу, поставьте `BIND_ADDRESS=0.0.0.0`
+в `.env`, но помните: аутентификации нет, а `DELETE /tasks/{id}` удаляет по-настоящему.
 
-1. `postgres`, `rabbitmq` and `jaeger` come up, the first two with health checks.
-2. `migrator` waits for PostgreSQL to be **healthy**, applies the migrations and exits. Schema
-   changes stay a deploy step: no host migrates on boot, so none needs DDL rights at runtime and
-   two instances cannot race each other.
-3. `listener` waits for RabbitMQ, and declares the consumer queues.
-4. `api` waits for the migrator to have **exited successfully**, so the schema is there before the
-   first request, and starts after `listener` for a head start rather than a guarantee -
-   `service_started` means the process exists, not that its queues are bound. Anything published in
-   that gap waits in the `unroutable` queue instead of being dropped.
-
-Published ports bind to `127.0.0.1` by default, so the stack is reachable only from the machine
-running it. Set `BIND_ADDRESS=0.0.0.0` in `.env` to share it - remember there is no authentication,
-and `DELETE /tasks/{id}` is a hard delete.
-
-Every port and credential has a default compiled into `docker-compose.yml`, so no `.env` is needed.
-Copy `.env.example` to `.env` to change one - most often a port already taken by something you
-started by hand.
+Все порты и пароли уже заданы в `docker-compose.yml`, файл `.env` нужен только чтобы что-то
+переопределить, чаще всего занятый порт. Образец лежит в `.env.example`.
 
 ```bash
-docker compose logs -f api listener   # both hosts also write a rolling file to /app/logs
-docker compose down                   # add -v to drop the database volume too
+docker compose logs -f api listener
+docker compose down            # -v чтобы снести и данные
 ```
 
-The two host images publish framework-dependent onto the runtime images and run as the non-root
-`app` user. The listener's base is `runtime` rather than `aspnet`: it is a worker that references no
-web framework. `migrator` is the same runtime image: `dotnet ef migrations bundle` compiles
-the migrations into a single-file executable in the build stage, so the SDK cost stays there. It is
-still a container that exits rather than anything the running hosts carry.
+## Как это устроено
 
-## Running the hosts from source
-
-### 1. Start PostgreSQL, RabbitMQ and Jaeger
-
-```bash
-docker run -d --name finbeat-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=finbeat_taskmanagement \
-  -p 5432:5432 postgres:16-alpine
-
-docker run -d --name finbeat-rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management-alpine
-
-docker run -d --name finbeat-jaeger -p 16686:16686 -p 4317:4317 -p 4318:4318 jaegertracing/jaeger:2.21.0
+```mermaid
+flowchart LR
+    C(["Клиент"]) -->|HTTP| API["Api"]
+    API -->|"задача и событие<br/>в одной транзакции"| PG[("PostgreSQL")]
+    PG -->|"outbox: отправка<br/>после коммита"| MQ{{"RabbitMQ"}}
+    MQ --> L["Listener"]
+    API -.->|трассы| J(["Jaeger"])
+    L -.->|трассы| J
 ```
 
-### 2. Apply the migrations
+Событие и изменение задачи попадают в базу одной транзакцией (transactional outbox), поэтому не
+бывает ни задачи без события, ни события без задачи. Отправка в брокер идёт уже после коммита и
+повторяется сама, так что API поднимается даже при выключенном RabbitMQ.
 
-Schema changes are a deploy step, never applied at startup - a host that migrates on boot races
-every other instance and needs DDL rights at runtime.
+`Listener` - отдельный деплой. Общего у него с API только контракты событий, никакой общей базы.
 
-```bash
-dotnet tool restore
-
-ConnectionStrings__TaskManagement="Host=localhost;Port=5432;Database=finbeat_taskmanagement;Username=postgres;Password=postgres" \
-dotnet ef database update \
-  --project src/FinBeat.TaskManagement.Infrastructure \
-  --startup-project src/FinBeat.TaskManagement.Infrastructure \
-  --context ApplicationDbContext
-```
-
-### 3. Run the listener, then the API
-
-Order matters on a cold broker. Consumer queues and their bindings are declared by the **listener**
-at startup, and a fanout exchange with nothing bound to it discards what it cannot route - silently,
-with no error returned to the publisher.
-
-```bash
-dotnet run --project src/FinBeat.TaskManagement.Listener   # logs each event it receives
-dotnet run --project src/FinBeat.TaskManagement.Api        # Swagger UI at /swagger
-```
-
-`appsettings.Development.json` already points both at the containers above, so no environment
-variables are needed for a local run. The API starts even when RabbitMQ is down: publishes go to the
-outbox table, and delivery retries in the background.
-
-### The `unroutable` queue
-
-Start them the other way round anyway and nothing is lost. Every event exchange names an alternate
-exchange, so an event published while no consumer queue is bound is diverted to the durable
-`unroutable` queue instead of being dropped:
-
-```bash
-curl -s -u guest:guest http://localhost:15672/api/queues/%2F/unroutable
-```
-
-Messages sitting there mean events were published with nothing listening. Nothing drains that queue
-automatically - it is a place to look, not a recovery mechanism.
-
-The alternate exchange is an *exchange argument*, so it is fixed when the exchange is first declared.
-Pointing this build at a broker that already carries exchanges declared without it fails the publish
-with `PRECONDITION_FAILED - inequivalent arg 'alternate-exchange'`; the event stays in the outbox and
-retries. Delete the four `FinBeat.TaskManagement.Contracts.Tasks:*` exchanges and it recovers on the
-next attempt.
-
-### Tracing
-
-Both hosts export OpenTelemetry traces over OTLP, and `appsettings.Development.json` points them at
-the Jaeger container above - a local run is traced with no further setup. Leave `OtlpEndpoint` empty
-and nothing is exported at all, rather than every span failing against a collector that is not there.
-
-Open http://localhost:16686 and pick `FinBeat.TaskManagement.Api`. One request spans both services:
+### Слои
 
 ```
-PUT /tasks/{id:guid}/status       FinBeat.TaskManagement.Api
-  finbeat_taskmanagement          Npgsql, once per statement
-  outbox send                     the publish, inside the transaction
-  outbox process                  delivery to the broker, after the commit
-  TaskStatusChanged send
-  task-status-changed receive     FinBeat.TaskManagement.Listener
-  task-status-changed process
+src/
+  Domain           агрегат и правила. Без зависимостей.
+  Contracts        формат событий. Без зависимостей.
+  Application      сценарии на Result<T>. Только EF Core.
+  Infrastructure   PostgreSQL, MassTransit, outbox.
+  Api              minimal API, валидация, Swagger.
+  Listener         потребители событий. Только Contracts.
+sql/               Задание 2, табличная функция.
+tests/             архитектурные, модульные, интеграционные тесты.
 ```
 
-Trace context survives both the outbox and the broker, so what the listener does is joined to the
-request that caused it instead of surfacing as an unrelated trace. The API traces ASP.NET Core,
-HttpClient, Npgsql and MassTransit; the listener owns no database, so it traces MassTransit alone.
+Зависимости направлены внутрь, и это проверяется тестами, а не держится на соглашении.
 
-Jaeger v2 serves the UI on 16686 and speaks OTLP on 4317 (gRPC, what the exporter defaults to) and
-4318 (HTTP). Its query API is `/api/v3/...`; the v1 `/api/services` path is gone.
+### Порядок запуска в compose
 
-## Configuration
+```mermaid
+flowchart TD
+    PG[("postgres")] -->|healthy| M["migrator"]
+    MQ{{"rabbitmq"}} -->|healthy| L["listener"]
+    M -->|"успешно завершился"| API["api"]
+    L -->|запустился| API
+    PG -->|healthy| API
+    MQ -->|healthy| API
+```
 
-Every setting can be supplied as an environment variable, with `__` for nesting.
+Миграции накатывает отдельный контейнер `migrator`, который отрабатывает и выходит. Ни один хост не
+мигрирует базу при старте: иначе два инстанса гонялись бы друг с другом, и каждому нужны были бы
+права на DDL в рантайме.
 
-| Setting | Environment variable | Default |
-|---|---|---|
-| `ConnectionStrings:TaskManagement` | `ConnectionStrings__TaskManagement` | none - startup fails without it |
-| `RabbitMq:Host` | `RabbitMq__Host` | `localhost` |
-| `RabbitMq:Port` | `RabbitMq__Port` | `5672` |
-| `RabbitMq:VHost` | `RabbitMq__VHost` | `/` |
-| `RabbitMq:User` / `RabbitMq:Pass` | `RabbitMq__User` / `RabbitMq__Pass` | `guest` / `guest` |
-| `OpenTelemetry:OtlpEndpoint` | `OTEL_EXPORTER_OTLP_ENDPOINT` | unset outside Development, where it points at Jaeger; tracing is exported only when set |
-
-The connection string is validated at startup, so a missing one fails immediately and names the key
-rather than surfacing as a null reference on the first query.
+`listener` стартует раньше API, потому что очереди объявляет именно он. Это фора, а не гарантия:
+`service_started` означает лишь, что процесс существует. Всё, что успеет уйти в этот промежуток,
+попадёт в очередь `unroutable`, а не пропадёт.
 
 ## API
 
-| | | |
+| Метод | Путь | Ответы |
 |---|---|---|
-| `POST` | `/tasks` | 201 with a `Location` header |
-| `GET` | `/tasks?status=&page=&pageSize=` | 200, one page, oldest first |
+| `POST` | `/tasks` | 201 и заголовок `Location` |
+| `GET` | `/tasks?status=&page=&pageSize=` | 200, страница, старые сверху |
 | `GET` | `/tasks/{id}` | 200 / 404 |
 | `PUT` | `/tasks/{id}` | 200 / 400 / 404 |
 | `PUT` | `/tasks/{id}/status` | 200 / 400 / 404 / 409 |
 | `DELETE` | `/tasks/{id}` | 204 / 404 |
 
-Statuses travel as numbers - `1` New, `2` InProgress, `3` Completed, `4` Archived - in requests and
-responses. The OpenAPI document spells out what each number means, taken from the summaries on the
-enum itself, so the two cannot drift; Swagger UI shows them under the field. The `?status=` query
-also accepts the name, since that binder parses both, but the number is what is documented.
+Статусы ходят числами: `1` New, `2` InProgress, `3` Completed, `4` Archived. Что означает каждое
+число, написано в OpenAPI: описание собирается из XML-комментариев самого перечисления, поэтому
+разойтись они не могут. В событиях статус передаётся, наоборот, именем: потребителей не
+передеплоивают вместе с API, а имя переживёт перенумерацию, о которой они не узнают.
 
-Integration events are the exception and carry the **name**: the API is versioned and documented,
-while consumers are not redeployed alongside it, and a name survives a renumbering they never hear
-about.
+Ошибки возвращаются как problem details (RFC 9457) со стабильным полем `code`, у ошибок валидации
+дополнительно есть `errors` по полям.
 
-Failures are RFC 9457 problem details carrying a stable `code` extension; validation
-failures add per-field `errors`.
+### Переходы статусов
 
-Swagger UI is served in Development only, at `/swagger`.
-
-## Tests
-
-```bash
-dotnet test -c Release                                # everything
-dotnet test -c Release --filter "Category!=RequiresDocker"   # no Docker needed
+```mermaid
+stateDiagram-v2
+    [*] --> New
+    New --> InProgress
+    New --> Completed
+    New --> Archived
+    InProgress --> New
+    InProgress --> Completed
+    InProgress --> Archived
+    Completed --> InProgress
+    Completed --> Archived
+    Archived --> New
 ```
 
-The container-backed suites start their own PostgreSQL through Testcontainers; they do not use the
-container from step 1.
+Всё, чего нет на схеме, даёт 409. Из архива задача возвращается в `New`, а не в прежний статус:
+чтобы помнить прежний, понадобилось бы поле, которого задание не требует, а история и так есть
+в событиях.
 
-## Задание 2 - daily payments
+## Запуск из исходников
 
-A table function returning one row per calendar day in `[Sd, Ed]` for a client, zero-filled where
-there were no payments, over intervals that may span years.
-
-Two renderings of the same specification:
-
-| | |
-|---|---|
-| `sql/postgresql/client_daily_payments.sql` | the one this repository can run, and the one the tests exercise |
-| `sql/sqlserver/ClientDailyPayments.sql` | the literal reading, in the `bigint` / `datetime2(0)` / `money` types the assignment states |
-
-Both were executed against a real server and both worked examples matched row for row - PostgreSQL 16
-and SQL Server 2025. `ClientDailyPaymentsTests` applies the PostgreSQL script **as it ships**, seeds
-the assignment's own six rows and asserts both results, so editing the file is what those assertions
-are about. There is no equivalent suite for the T-SQL: that would mean a 1.5 GB SQL Server image in
-the test run, so it was verified by hand instead.
+Нужен .NET SDK 8.0.4xx, он зафиксирован в `global.json`.
 
 ```bash
-docker exec -i finbeat-taskmanagement-postgres-1 \
-  psql -U postgres -d finbeat_taskmanagement < sql/postgresql/client_daily_payments.sql
+docker run -d --name finbeat-postgres -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=finbeat_taskmanagement -p 5432:5432 postgres:16-alpine
+docker run -d --name finbeat-rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management-alpine
+docker run -d --name finbeat-jaeger -p 16686:16686 -p 4317:4317 -p 4318:4318 jaegertracing/jaeger:2.21.0
 
-docker exec finbeat-taskmanagement-postgres-1 \
-  psql -U postgres -d finbeat_taskmanagement \
-  -c "SELECT * FROM client.get_daily_payments(1, '2022-01-02', '2022-01-07');"
+dotnet tool restore
+ConnectionStrings__TaskManagement="Host=localhost;Port=5432;Database=finbeat_taskmanagement;Username=postgres;Password=postgres" \
+dotnet ef database update --project src/FinBeat.TaskManagement.Infrastructure \
+  --startup-project src/FinBeat.TaskManagement.Infrastructure --context ApplicationDbContext
+
+dotnet run --project src/FinBeat.TaskManagement.Listener   # сначала слушатель
+dotnet run --project src/FinBeat.TaskManagement.Api        # затем API
 ```
 
-The scripts carry no comments. `sql/README.md` explains the design in Russian: the type mapping, why
-the join is a half-open range rather than a cast, where the days come from, and what the index,
-`STABLE`, `PARALLEL SAFE` and the absent `SET search_path` are each doing.
+`appsettings.Development.json` уже указывает на эти контейнеры, переменные окружения не нужны.
 
-## Not included
+## Настройки
 
-- **Task ownership.** The assignment says "a user's tasks", but there is no authentication here and
-  no `UserId` on the aggregate, so every task is visible to every caller. Adding it means choosing
-  where identity comes from, which is a decision rather than an omission.
-- **Consumer-side deduplication.** The outbox gives at-least-once delivery, and the listener owns no
-  database to hold an inbox, so a redelivery is logged twice.
+Любую настройку можно передать переменной окружения, вложенность через `__`.
+
+| Настройка | Переменная | По умолчанию |
+|---|---|---|
+| `ConnectionStrings:TaskManagement` | `ConnectionStrings__TaskManagement` | нет, без неё старт падает |
+| `RabbitMq:Host` / `Port` / `VHost` | `RabbitMq__Host` и далее | `localhost` / `5672` / `/` |
+| `RabbitMq:User` / `Pass` | `RabbitMq__User` / `RabbitMq__Pass` | `guest` / `guest` |
+| `OpenTelemetry:OtlpEndpoint` | `OTEL_EXPORTER_OTLP_ENDPOINT` | в Development указывает на Jaeger, иначе пусто и трассы не отправляются |
+
+Строка подключения проверяется на старте, поэтому её отсутствие сразу называет ключ, а не всплывает
+позже как NullReferenceException на первом запросе.
+
+## Наблюдаемость
+
+Оба хоста отправляют трассы по OTLP. Откройте http://localhost:16686, выберите
+`FinBeat.TaskManagement.Api` и увидите запрос целиком, вместе с работой слушателя.
+
+```
+PUT /tasks/{id}/status        Api
+  finbeat_taskmanagement      Npgsql, по спану на запрос
+  outbox send                 публикация внутри транзакции
+  outbox process              доставка в брокер после коммита
+  TaskStatusChanged send
+  task-status-changed receive Listener
+  task-status-changed process
+```
+
+Контекст трассы переживает и outbox, и брокер, поэтому работа слушателя привязана к вызвавшему её
+запросу, а не выглядит отдельной трассой.
+
+### Очередь `unroutable`
+
+У каждого обменника событий назначен alternate exchange. Если событие опубликовано, когда ни одна
+очередь ещё не привязана, оно уходит в долговременную очередь `unroutable`, а не теряется.
+
+```bash
+curl -s -u guest:guest http://localhost:15672/api/queues/%2F/unroutable
+```
+
+Сообщения там означают, что события публиковались, когда никто не слушал. Очередь никто не разбирает
+автоматически: это место, куда стоит заглянуть, а не механизм восстановления.
+
+## Тесты
+
+```bash
+dotnet test -c Release                                       # всё
+dotnet test -c Release --filter "Category!=RequiresDocker"   # без Docker
+```
+
+Тестам с Docker не нужен стенд выше: они поднимают свои контейнеры через Testcontainers.
+
+## Задание 2
+
+Табличная функция, которая по клиенту и интервалу дат отдаёт поденные суммы платежей, с нулями за
+дни без платежей. Обе реализации и разбор решений: [`sql/README.md`](sql/README.md).
+
+## Чего здесь нет
+
+- **Владельца задачи.** В задании сказано «задачи пользователя», но аутентификации нет и поля
+  `UserId` у агрегата тоже, так что все задачи видны всем. Добавить его значит сначала решить,
+  откуда берётся личность пользователя.
+- **Дедупликации на стороне потребителя.** Доставка гарантирует «хотя бы один раз», своей базы у
+  слушателя нет, поэтому повторная доставка будет залогирована дважды.
