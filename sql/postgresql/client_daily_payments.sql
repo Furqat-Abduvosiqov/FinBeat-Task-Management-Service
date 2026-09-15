@@ -18,7 +18,10 @@ CREATE TABLE IF NOT EXISTS client.payments
 
 -- The function's access path. Leading with client_id lets one client's rows be found directly, and
 -- dt second lets the range be walked in order rather than filtered afterwards.
-CREATE INDEX IF NOT EXISTS ix_payments_client_id_dt ON client.payments (client_id, dt);
+-- amount is INCLUDEd so the function can be answered from the index alone, without visiting the
+-- heap for a column it only sums.
+CREATE INDEX IF NOT EXISTS ix_payments_client_id_dt
+    ON client.payments (client_id, dt) INCLUDE (amount);
 
 CREATE OR REPLACE FUNCTION client.get_daily_payments(
     p_client_id  bigint,
@@ -26,7 +29,13 @@ CREATE OR REPLACE FUNCTION client.get_daily_payments(
     p_end_date   date)
 RETURNS TABLE (dt date, amount numeric(19, 4))
 LANGUAGE sql
+-- STABLE, not VOLATILE: it only reads, so the planner may call it once per scan rather than per row.
+-- PARALLEL SAFE lets that scan be parallelised, which is what a multi-year interval needs.
+--
+-- Deliberately no SET search_path: a SET clause makes a SQL function opaque to the inliner, and an
+-- inlined body is what lets the index below be used at all. Every name here is schema-qualified.
 STABLE
+PARALLEL SAFE
 AS $$
     SELECT days.dt::date,
            COALESCE(SUM(payments.amount), 0)::numeric(19, 4)

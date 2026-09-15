@@ -39,18 +39,26 @@ AS
 RETURN
     -- A tally built by cross joins, not a recursive CTE: an inline table function cannot carry
     -- OPTION (MAXRECURSION 0), so recursion would stop at 100 days while the assignment says an
-    -- interval may span several years. Four doublings give 65,536 days, about 179 years.
+    -- interval may span several years.
+    --
+    -- Five doublings give 2^32 rows, past the 3,652,059 days the date type can express at all, so
+    -- no interval can outrun the tally. Four stopped at 65,536 - about 179 years - and a longer
+    -- request came back short with no error at all, which is a worse answer than a slow one. TOP
+    -- below caps what is generated, so the unused levels cost nothing.
+    --
+    -- SQL Server 2022 and later could use GENERATE_SERIES instead; a tally runs on any version.
     WITH N0 (n) AS (SELECT 1 UNION ALL SELECT 1),
          N1 (n) AS (SELECT 1 FROM N0 a CROSS JOIN N0 b),
          N2 (n) AS (SELECT 1 FROM N1 a CROSS JOIN N1 b),
          N3 (n) AS (SELECT 1 FROM N2 a CROSS JOIN N2 b),
          N4 (n) AS (SELECT 1 FROM N3 a CROSS JOIN N3 b),
+         N5 (n) AS (SELECT 1 FROM N4 a CROSS JOIN N4 b),
          Days (Dt) AS
          (
              -- CASE, because TOP rejects a negative count and @Sd may be later than @Ed.
              SELECT TOP (CASE WHEN DATEDIFF(day, @Sd, @Ed) < 0 THEN 0 ELSE DATEDIFF(day, @Sd, @Ed) + 1 END)
                     DATEADD(day, ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1, @Sd)
-             FROM N4
+             FROM N5
          )
     SELECT Days.Dt,
            Amount = ISNULL(SUM(p.Amount), 0)

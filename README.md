@@ -204,15 +204,35 @@ container from step 1.
 
 ## Задание 2 — daily payments
 
-`sql/postgresql/client_daily_payments.sql` is the table function, with its table and index. Its
-output was checked against both worked examples in the assignment. `sql/sqlserver/` carries the same
-logic in the T-SQL types the assignment states.
+A table function returning one row per calendar day in `[Sd, Ed]` for a client, zero-filled where
+there were no payments, over intervals that may span years.
+
+Two renderings of the same specification:
+
+| | |
+|---|---|
+| `sql/postgresql/client_daily_payments.sql` | the one this repository can run, and the one the tests exercise |
+| `sql/sqlserver/ClientDailyPayments.sql` | the literal reading, in the `bigint` / `datetime2(0)` / `money` types the assignment states |
+
+Both were executed against a real server and both worked examples matched row for row — PostgreSQL 16
+and SQL Server 2025. `ClientDailyPaymentsTests` applies the PostgreSQL script **as it ships**, seeds
+the assignment's own six rows and asserts both results, so editing the file is what those assertions
+are about. There is no equivalent suite for the T-SQL: that would mean a 1.5 GB SQL Server image in
+the test run, so it was verified by hand instead.
 
 ```bash
-docker exec -i finbeat-postgres psql -U postgres -d finbeat_taskmanagement < sql/postgresql/client_daily_payments.sql
-docker exec finbeat-postgres psql -U postgres -d finbeat_taskmanagement \
+docker exec -i finbeat-taskmanagement-postgres-1 \
+  psql -U postgres -d finbeat_taskmanagement < sql/postgresql/client_daily_payments.sql
+
+docker exec finbeat-taskmanagement-postgres-1 \
+  psql -U postgres -d finbeat_taskmanagement \
   -c "SELECT * FROM client.get_daily_payments(1, '2022-01-02', '2022-01-07');"
 ```
+
+Both avoid `date(dt) = day`, which would leave `(client_id, dt)` unusable and scan every payment the
+client ever made; the join is a half-open range on the raw column instead. Days come from
+`generate_series` in PostgreSQL and from a cross-joined tally in T-SQL — not a recursive CTE, because
+an inline table function cannot carry `OPTION (MAXRECURSION 0)` and recursion would stop at 100 days.
 
 ## Not included
 
