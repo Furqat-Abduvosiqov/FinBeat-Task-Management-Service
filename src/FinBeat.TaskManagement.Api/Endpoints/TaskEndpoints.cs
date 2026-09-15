@@ -25,7 +25,7 @@ internal static class TaskEndpoints
             .WithOpenApi(operation =>
             {
                 // Group-wide, so the four routes that take an id describe it once between them.
-                OpenApiConventions.Describe(operation, "taskId", "The task id.");
+                OpenApiConventions.Describe(operation, "id", "The task id.");
 
                 return operation;
             });
@@ -48,19 +48,19 @@ internal static class TaskEndpoints
                 return operation;
             });
 
-        tasks.MapGet("/{taskId:guid}", GetAsync)
+        tasks.MapGet("/{id:guid}", GetAsync)
             .WithName(GetTaskByIdRoute)
             .WithSummary("Reads one task")
             .ProducesProblem(StatusCodes.Status404NotFound);
 
-        tasks.MapPut("/{taskId:guid}", UpdateAsync)
+        tasks.MapPut("/{id:guid}", UpdateAsync)
             .WithName("UpdateTaskDetails")
             .WithSummary("Replaces a task's title and description")
             .WithDescription("Submitting the values the task already holds changes nothing and raises no event, so the history stays honest.")
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
-        tasks.MapPut("/{taskId:guid}/status", ChangeStatusAsync)
+        tasks.MapPut("/{id:guid}/status", ChangeStatusAsync)
             .WithName("ChangeTaskStatus")
             .WithSummary("Moves a task to another status")
             .WithDescription(
@@ -71,7 +71,7 @@ internal static class TaskEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
-        tasks.MapDelete("/{taskId:guid}", DeleteAsync)
+        tasks.MapDelete("/{id:guid}", DeleteAsync)
             .WithName("DeleteTask")
             .WithSummary("Deletes a task")
             .WithDescription("The row is removed for good. Move the task to Archived to keep its history instead.")
@@ -90,7 +90,7 @@ internal static class TaskEndpoints
             cancellationToken);
 
         return result.IsSuccess
-            ? TypedResults.CreatedAtRoute(result.Value, GetTaskByIdRoute, new { taskId = result.Value.Id })
+            ? TypedResults.CreatedAtRoute(result.Value, GetTaskByIdRoute, new { id = result.Value.Id })
             : result.Error!.ToProblem();
     }
 
@@ -105,47 +105,47 @@ internal static class TaskEndpoints
     }
 
     private static async Task<Results<Ok<TaskResponse>, ProblemHttpResult>> GetAsync(
-        Guid taskId,
+        Guid id,
         GetTaskByIdHandler handler,
         CancellationToken cancellationToken)
     {
-        var result = await handler.HandleAsync(new GetTaskByIdQuery(taskId), cancellationToken);
+        var result = await handler.HandleAsync(new GetTaskByIdQuery(id), cancellationToken);
 
         return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error!.ToProblem();
     }
 
     private static async Task<Results<Ok<TaskResponse>, ProblemHttpResult>> UpdateAsync(
-        Guid taskId,
+        Guid id,
         UpdateTaskDetailsRequest request,
         UpdateTaskDetailsHandler handler,
         CancellationToken cancellationToken)
     {
         var result = await handler.HandleAsync(
-            new UpdateTaskDetailsCommand(taskId, request.Title, request.Description),
+            new UpdateTaskDetailsCommand(id, request.Title, request.Description),
             cancellationToken);
 
         return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error!.ToProblem();
     }
 
     private static async Task<Results<Ok<TaskResponse>, ProblemHttpResult>> ChangeStatusAsync(
-        Guid taskId,
+        Guid id,
         ChangeTaskStatusRequest request,
         ChangeTaskStatusHandler handler,
         CancellationToken cancellationToken)
     {
         var result = await handler.HandleAsync(
-            new ChangeTaskStatusCommand(taskId, request.Status),
+            new ChangeTaskStatusCommand(id, request.Status),
             cancellationToken);
 
         return result.IsSuccess ? TypedResults.Ok(result.Value) : result.Error!.ToProblem();
     }
 
     private static async Task<Results<NoContent, ProblemHttpResult>> DeleteAsync(
-        Guid taskId,
+        Guid id,
         DeleteTaskHandler handler,
         CancellationToken cancellationToken)
     {
-        var result = await handler.HandleAsync(new DeleteTaskCommand(taskId), cancellationToken);
+        var result = await handler.HandleAsync(new DeleteTaskCommand(id), cancellationToken);
 
         return result.IsSuccess ? TypedResults.NoContent() : result.Error!.ToProblem();
     }

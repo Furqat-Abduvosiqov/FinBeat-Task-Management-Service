@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using FinBeat.TaskManagement.Api;
 using FinBeat.TaskManagement.Domain.Tasks;
 using Microsoft.AspNetCore.Builder;
@@ -24,10 +25,10 @@ public sealed class ApiDocumentationTests
 
         ShouldDescribe(paths, "/tasks", "post", "CreateTask", "201", "400");
         ShouldDescribe(paths, "/tasks", "get", "GetTasks", "200", "400");
-        ShouldDescribe(paths, "/tasks/{taskId}", "get", "GetTaskById", "200", "404");
-        ShouldDescribe(paths, "/tasks/{taskId}", "put", "UpdateTaskDetails", "200", "400", "404");
-        ShouldDescribe(paths, "/tasks/{taskId}", "delete", "DeleteTask", "204", "404");
-        ShouldDescribe(paths, "/tasks/{taskId}/status", "put", "ChangeTaskStatus", "200", "400", "404", "409");
+        ShouldDescribe(paths, "/tasks/{id}", "get", "GetTaskById", "200", "404");
+        ShouldDescribe(paths, "/tasks/{id}", "put", "UpdateTaskDetails", "200", "400", "404");
+        ShouldDescribe(paths, "/tasks/{id}", "delete", "DeleteTask", "204", "404");
+        ShouldDescribe(paths, "/tasks/{id}/status", "put", "ChangeTaskStatus", "200", "400", "404", "409");
     }
 
     [Fact]
@@ -54,6 +55,33 @@ public sealed class ApiDocumentationTests
         Names(schemas.GetProperty(nameof(TaskItemStatus))).ShouldBe(expected);
         Names(query.GetProperty("schema")).ShouldBe(expected);
         query.GetProperty("description").GetString().ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task The_version_the_document_states_is_one_the_bundled_Swagger_UI_reads()
+    {
+        // Swashbuckle ships the generator and the UI as separate packages, and they can fall out of
+        // step. Microsoft.OpenApi 1.6.23 began stamping documents "3.0.4" where it used to write
+        // "3.0.1", while the swagger-ui bundled up to Swashbuckle 7.2.0 still tested that field with
+        // ^3\.0\.([0123])(?:-rc[012])?$ - so a valid document rendered as nothing but "The provided
+        // definition does not specify a valid version field". Asserting a literal version here would
+        // only restate what the serialiser does; what is worth holding is that the two halves still
+        // agree, so the UI's own test is read out of the bundle it serves and applied to the version.
+        await using var app = await StartAsync();
+
+        var version = (await ReadDocumentAsync(app)).GetProperty("openapi").GetString();
+        var bundle = await app.GetTestClient().GetStringAsync("/swagger/swagger-ui-bundle.js");
+
+        var tests = Regex.Matches(bundle, @"\^3\\\.0\\\.[^/\r\n]*?\$")
+            .Select(match => match.Value)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        // Were swagger-ui to stop shipping that test in this shape, the assertion below would hold
+        // over nothing at all, so finding it is the first thing to establish.
+        version.ShouldNotBeNullOrWhiteSpace();
+        tests.ShouldNotBeEmpty();
+        tests.ShouldAllBe(test => Regex.IsMatch(version, test));
     }
 
     private static string[] Names(JsonElement schema)
