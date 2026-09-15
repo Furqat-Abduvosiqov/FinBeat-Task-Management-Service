@@ -2,7 +2,7 @@ using FinBeat.TaskManagement.Domain.Tasks;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace FinBeat.TaskManagement.Api.Endpoints;
+namespace FinBeat.TaskManagement.Api.OpenApi;
 
 /// <summary>States the schema of every task-status parameter, so the legal names are documented.</summary>
 /// <remarks>

@@ -3,6 +3,7 @@ using FinBeat.TaskManagement.Application.Tasks.Commands;
 using FinBeat.TaskManagement.Application.Tasks.Queries;
 using FinBeat.TaskManagement.Domain.Tasks;
 using FinBeat.TaskManagement.Api.Endpoints.Validation;
+using FinBeat.TaskManagement.Api.OpenApi;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace FinBeat.TaskManagement.Api.Endpoints;

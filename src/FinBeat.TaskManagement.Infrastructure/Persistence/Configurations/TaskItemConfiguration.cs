@@ -45,5 +45,14 @@ internal sealed class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
             table.HasCheckConstraint("ck_tasks_status", $"status IN ({declaredStatuses})"));
 
         builder.HasIndex(task => new { task.Status, task.CreatedAt });
+
+        // PostgreSQL's own row version. Without it two requests can load the same task, both save,
+        // and the last write wins while both events still reach the outbox - leaving a consumer told
+        // of a change the row never kept.
+        //
+        // A shadow property rather than UseXminAsConcurrencyToken, which Npgsql 8 marks obsolete.
+        // Its migration adds no DDL, because xmin is a system column every table already has; the
+        // migration exists only so the model snapshot stays in step.
+        builder.Property<uint>("xmin").IsRowVersion();
     }
 }

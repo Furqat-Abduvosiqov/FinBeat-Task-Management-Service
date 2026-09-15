@@ -2,7 +2,7 @@ using FinBeat.TaskManagement.Domain.Tasks;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 
-namespace FinBeat.TaskManagement.Api.Endpoints;
+namespace FinBeat.TaskManagement.Api.OpenApi;
 
 internal static class OpenApiConventions
 {

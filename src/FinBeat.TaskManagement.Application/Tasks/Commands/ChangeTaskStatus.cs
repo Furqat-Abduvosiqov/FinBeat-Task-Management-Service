@@ -2,6 +2,7 @@ using FinBeat.TaskManagement.Application.Abstractions;
 using FinBeat.TaskManagement.Application.Results;
 using FinBeat.TaskManagement.Domain.Abstractions;
 using FinBeat.TaskManagement.Domain.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinBeat.TaskManagement.Application.Tasks.Commands;
 
@@ -52,7 +53,15 @@ public sealed class ChangeTaskStatusHandler(
         }
 
         await publisher.PublishRaisedEventsAsync(task, cancellationToken);
-        await context.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result.Failure<TaskResponse>(TaskErrors.ConcurrentlyModified(command.TaskId));
+        }
 
         return Result.Success(TaskResponse.From(task));
     }
