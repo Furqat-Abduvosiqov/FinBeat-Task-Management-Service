@@ -1,3 +1,4 @@
+using FinBeat.TaskManagement.Contracts.Messaging;
 using FinBeat.TaskManagement.Contracts.Tasks;
 using FinBeat.TaskManagement.Listener.Consumers;
 using MassTransit;
@@ -11,23 +12,14 @@ namespace FinBeat.TaskManagement.Listener;
 /// <remarks>A second copy of the API's bootstrap on purpose: this is a separate deployable whose only permitted reference is Contracts, and Contracts is dependency-free so it cannot hold hosting code.</remarks>
 internal static class Bootstrap
 {
-    // Half of a cross-deployable contract: the API binds the same section name to reach the same broker.
-    private const string RabbitMqSectionName = "RabbitMq";
-
     private const string OpenTelemetrySection = "OpenTelemetry";
 
     private const string ServiceNameKey = "ServiceName";
-
-    private const string OtlpEndpointKey = "OtlpEndpoint";
 
     private const string OtlpEndpointVariable = "OTEL_EXPORTER_OTLP_ENDPOINT";
 
     // MassTransit emits its own ActivitySource, so subscribing needs the name and no extra package.
     private const string MassTransitActivitySource = "MassTransit";
-
-    // The other half of the alternate-exchange contract: binding a queue re-declares the API's
-    // exchange, and a mismatched argument is PRECONDITION_FAILED and a listener that never starts.
-    private const string UnroutableName = "unroutable";
 
     /// <summary>A console logger for the window before configuration is read, so a failure while building the host is not lost.</summary>
     internal static Serilog.ILogger CreateBootstrapLogger() =>
@@ -48,8 +40,11 @@ internal static class Bootstrap
 
     private static void AddMessaging(this HostApplicationBuilder builder)
     {
+        // Both broker names come from Contracts.Messaging.BrokerTopology: the API declares the same
+        // section and the same alternate exchange from that one place, so a rename cannot go stale
+        // on just one side and surface as PRECONDITION_FAILED at broker-declare time.
         builder.Services.AddOptions<RabbitMqTransportOptions>()
-            .Bind(builder.Configuration.GetSection(RabbitMqSectionName));
+            .Bind(builder.Configuration.GetSection(BrokerTopology.RabbitMqSectionName));
 
         builder.Services.AddMassTransit(bus =>
         {
@@ -68,7 +63,9 @@ internal static class Bootstrap
 
                 foreach (var integrationEvent in typeof(TaskCreated).Assembly.GetExportedTypes())
                 {
-                    rabbit.Publish(integrationEvent, exchange => exchange.BindAlternateExchangeQueue(UnroutableName));
+                    rabbit.Publish(
+                        integrationEvent,
+                        exchange => exchange.BindAlternateExchangeQueue(BrokerTopology.UnroutableName));
                 }
 
                 rabbit.ConfigureEndpoints(context);
@@ -80,20 +77,18 @@ internal static class Bootstrap
     {
         var section = builder.Configuration.GetSection(OpenTelemetrySection);
         var serviceName = section[ServiceNameKey] ?? builder.Environment.ApplicationName;
-        var configuredEndpoint = section[OtlpEndpointKey];
-        var otlpEndpoint = string.IsNullOrWhiteSpace(configuredEndpoint)
-            ? Environment.GetEnvironmentVariable(OtlpEndpointVariable)
-            : configuredEndpoint;
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(serviceName))
             .WithTracing(tracing =>
             {
                 tracing.AddSource(MassTransitActivitySource);
-                
-                if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+
+                // The exporter reads OTEL_EXPORTER_OTLP_ENDPOINT itself; skip registering it
+                // entirely when unset, or every span fails against its localhost:4317 default.
+                if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(OtlpEndpointVariable)))
                 {
-                    tracing.AddOtlpExporter(exporter => exporter.Endpoint = new Uri(otlpEndpoint));
+                    tracing.AddOtlpExporter();
                 }
             });
     }

@@ -8,7 +8,7 @@ public sealed class AggregateRootTests
     [Fact]
     public void Raise_makes_the_event_visible_via_DomainEvents()
     {
-        var aggregate = new TestAggregateRoot(Guid.NewGuid());
+        var aggregate = new TestAggregateRoot();
         var domainEvent = new TestDomainEvent(DateTimeOffset.UnixEpoch);
 
         aggregate.RaiseTestEvent(domainEvent);
@@ -20,7 +20,7 @@ public sealed class AggregateRootTests
     [Fact]
     public void ClearDomainEvents_empties_the_collection()
     {
-        var aggregate = new TestAggregateRoot(Guid.NewGuid());
+        var aggregate = new TestAggregateRoot();
         aggregate.RaiseTestEvent(new TestDomainEvent(DateTimeOffset.UnixEpoch));
 
         aggregate.ClearDomainEvents();
@@ -31,7 +31,7 @@ public sealed class AggregateRootTests
     [Fact]
     public void DomainEvents_cannot_be_mutated_by_a_caller_casting_it()
     {
-        var aggregate = new TestAggregateRoot(Guid.NewGuid());
+        var aggregate = new TestAggregateRoot();
         aggregate.RaiseTestEvent(new TestDomainEvent(DateTimeOffset.UnixEpoch));
 
         var events = aggregate.DomainEvents;
@@ -47,7 +47,7 @@ public sealed class AggregateRootTests
         aggregate.DomainEvents.Count.ShouldBe(1);
     }
 
-    private sealed class TestAggregateRoot(Guid id) : AggregateRoot<Guid>(id)
+    private sealed class TestAggregateRoot : AggregateRoot
     {
         public void RaiseTestEvent(IDomainEvent domainEvent) => Raise(domainEvent);
     }

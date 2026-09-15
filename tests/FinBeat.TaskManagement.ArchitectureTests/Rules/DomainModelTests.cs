@@ -7,7 +7,7 @@ namespace FinBeat.TaskManagement.ArchitectureTests.Rules;
 // its own invariants is not something a dependency graph can see.
 public sealed class DomainModelTests
 {
-    private const string AggregateRootBaseType = "FinBeat.TaskManagement.Domain.Abstractions.AggregateRoot`1";
+    private const string AggregateRootBaseType = "FinBeat.TaskManagement.Domain.Abstractions.AggregateRoot";
 
     private const string DomainEventInterface = "FinBeat.TaskManagement.Domain.Abstractions.IDomainEvent";
 
@@ -103,11 +103,7 @@ public sealed class DomainModelTests
 
         for (var current = type.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.IsGenericType
-                && string.Equals(
-                    current.GetGenericTypeDefinition().FullName,
-                    AggregateRootBaseType,
-                    StringComparison.Ordinal))
+            if (string.Equals(current.FullName, AggregateRootBaseType, StringComparison.Ordinal))
             {
                 return true;
             }

@@ -80,6 +80,10 @@ flowchart TD
 `service_started` означает лишь, что процесс существует. Всё, что успеет уйти в этот промежуток,
 попадёт в очередь `unroutable`, а не пропадёт.
 
+Про готовность самого `api` гадать не нужно: у него есть healthcheck по `/health`, поэтому
+`docker compose up -d --wait` вернёт управление, когда API действительно отвечает, а не когда
+контейнер создан.
+
 ## API
 
 | Метод | Путь | Ответы |
@@ -90,11 +94,20 @@ flowchart TD
 | `PUT` | `/tasks/{id}` | 200 / 400 / 404 |
 | `PUT` | `/tasks/{id}/status` | 200 / 400 / 404 / 409 |
 | `DELETE` | `/tasks/{id}` | 204 / 404 |
+| `GET` | `/health` | 200 / 503 |
 
-Статусы ходят числами: `1` New, `2` InProgress, `3` Completed, `4` Archived. Что означает каждое
-число, написано в OpenAPI: описание собирается из XML-комментариев самого перечисления, поэтому
-разойтись они не могут. В событиях статус передаётся, наоборот, именем: потребителей не
-передеплоивают вместе с API, а имя переживёт перенумерацию, о которой они не узнают.
+Статусы ходят именами: `New`, `InProgress`, `Completed`, `Archived`. Так же они выглядят и в
+событиях, поэтому одна и та же строка означает одно и то же по обе стороны брокера, а перенумерация
+перечисления ничего не ломает ни у клиентов, ни у потребителей, которых не передеплоивают вместе
+с API.
+
+> **Ломающее изменение.** Раньше по HTTP ходили числа: `1` New, `2` InProgress, `3` Completed,
+> `4` Archived. Теперь `GET /tasks/{id}` отдаёт `"status": "InProgress"`, а не `"status": 2`, и в
+> OpenAPI числа больше нет. Клиент, разбирающий ответ по числу, сломается; число, присланное
+> в запросе, пока ещё понимается.
+
+`GET /health` отвечает 200, когда процесс жив и шина подключена к брокеру, иначе 503. По нему же
+ходит healthcheck контейнера `api`.
 
 Ошибки возвращаются как problem details (RFC 9457) со стабильным полем `code`, у ошибок валидации
 дополнительно есть `errors` по полям.
@@ -138,7 +151,9 @@ dotnet run --project src/FinBeat.TaskManagement.Listener   # сначала сл
 dotnet run --project src/FinBeat.TaskManagement.Api        # затем API
 ```
 
-`appsettings.Development.json` уже указывает на эти контейнеры, переменные окружения не нужны.
+`appsettings.Development.json` уже указывает на эти контейнеры, так что переменные окружения нужны
+ровно для одного - трасс: без `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317` в Jaeger ничего
+не придёт.
 
 ## Настройки
 
@@ -149,15 +164,21 @@ dotnet run --project src/FinBeat.TaskManagement.Api        # затем API
 | `ConnectionStrings:TaskManagement` | `ConnectionStrings__TaskManagement` | нет, без неё старт падает |
 | `RabbitMq:Host` / `Port` / `VHost` | `RabbitMq__Host` и далее | `localhost` / `5672` / `/` |
 | `RabbitMq:User` / `Pass` | `RabbitMq__User` / `RabbitMq__Pass` | `guest` / `guest` |
-| `OpenTelemetry:OtlpEndpoint` | `OTEL_EXPORTER_OTLP_ENDPOINT` | в Development указывает на Jaeger, иначе пусто и трассы не отправляются |
+| адрес коллектора трасс | `OTEL_EXPORTER_OTLP_ENDPOINT` | не задан, и тогда трассы никуда не уходят |
 
 Строка подключения проверяется на старте, поэтому её отсутствие сразу называет ключ, а не всплывает
 позже как NullReferenceException на первом запросе.
 
+У коллектора трасс своего ключа конфигурации нет: адрес читается только из стандартной
+`OTEL_EXPORTER_OTLP_ENDPOINT`, которую OpenTelemetry SDK разбирает сам. Пока она не задана,
+экспортёр не регистрируется вовсе - это опт-ин, а не попытка достучаться до `localhost:4317`,
+которой там никто не ждёт.
+
 ## Наблюдаемость
 
-Оба хоста отправляют трассы по OTLP. Откройте http://localhost:16686, выберите
-`FinBeat.TaskManagement.Api` и увидите запрос целиком, вместе с работой слушателя.
+Оба хоста отправляют трассы по OTLP, если `OTEL_EXPORTER_OTLP_ENDPOINT` указывает на коллектор.
+Откройте http://localhost:16686, выберите `FinBeat.TaskManagement.Api` и увидите запрос целиком,
+вместе с работой слушателя.
 
 ```
 PUT /tasks/{id}/status        Api

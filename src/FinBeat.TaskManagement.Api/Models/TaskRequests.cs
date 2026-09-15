@@ -14,5 +14,5 @@ public sealed record CreateTaskRequest(string? Title, string? Description);
 public sealed record UpdateTaskDetailsRequest(string? Title, string? Description);
 
 /// <summary>The body of a status-change request.</summary>
-/// <param name="Status">The status to move the task to, as its number. The OpenAPI document names each one.</param>
+/// <param name="Status">The status to move the task to, by name.</param>
 public sealed record ChangeTaskStatusRequest(TaskItemStatus Status);

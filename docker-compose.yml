@@ -8,7 +8,7 @@ x-broker: &broker
   RabbitMq__Pass: ${RABBITMQ_PASSWORD:-guest}
 
 x-tracing: &tracing
-  OpenTelemetry__OtlpEndpoint: http://jaeger:4317
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
 
 x-database: &database
   ConnectionStrings__TaskManagement: Host=postgres;Port=5432;Database=${POSTGRES_DB:-finbeat_taskmanagement};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
@@ -94,6 +94,12 @@ services:
       Serilog__MinimumLevel__Default: ${LOG_LEVEL:-Information}
     volumes:
       - api-logs:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf \"GET /health HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3 && head -1 <&3 | grep -q 200'"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     depends_on:
       postgres:
         condition: service_healthy

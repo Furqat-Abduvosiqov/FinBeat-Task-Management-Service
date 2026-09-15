@@ -2,22 +2,9 @@ namespace FinBeat.TaskManagement.Domain.Abstractions;
 
 /// <summary>Base class for aggregate roots: the consistency boundary, and the only thing that raises domain events.</summary>
 /// <remarks>Only an aggregate can record its own events, which keeps the state change and the event together.</remarks>
-/// <typeparam name="TId">The type of the aggregate's identifier.</typeparam>
-public abstract class AggregateRoot<TId>
-    where TId : notnull
+public abstract class AggregateRoot
 {
     private readonly List<IDomainEvent> _domainEvents = [];
-
-    /// <summary>Creates an aggregate root with the given identity.</summary>
-    protected AggregateRoot(TId id) => Id = id;
-
-    /// <summary>Reserved for EF Core, which sets the properties by reflection afterwards.</summary>
-    protected AggregateRoot()
-    {
-    }
-
-    /// <summary>The aggregate's identifier. Set once, never changed.</summary>
-    public TId Id { get; protected init; } = default!;
 
     /// <summary>Events raised since construction or the last <see cref="ClearDomainEvents"/>. Cannot be mutated by callers.</summary>
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();

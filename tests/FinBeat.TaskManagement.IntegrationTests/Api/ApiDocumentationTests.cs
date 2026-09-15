@@ -31,15 +31,15 @@ public sealed class ApiDocumentationTests
     }
 
     [Fact]
-    public async Task Statuses_are_documented_as_numbers_and_the_document_says_what_each_one_means()
+    public async Task Statuses_are_documented_as_names_the_enum_itself_explains()
     {
-        // Statuses travel as numbers, which tells a reader nothing on its own. OpenAPI has no field
-        // for documenting one enum member, so the meanings go in the description - read out of the
-        // XML summaries the enum already carries, which is why they cannot drift from the code.
+        // Statuses now travel as names, so there is no generated legend to keep in step with the
+        // code: JsonStringEnumConverter makes the wire values self-explanatory, and Swashbuckle's
+        // own XML-comments support already puts the enum's <summary> on the schema for free.
         await using var app = await StartAsync();
 
         var document = await ReadDocumentAsync(app);
-        var expected = Enum.GetValues<TaskItemStatus>().Select(status => (int)status).ToArray();
+        var expected = Enum.GetNames<TaskItemStatus>();
 
         var schemas = document.GetProperty("components").GetProperty("schemas");
 
@@ -47,7 +47,7 @@ public sealed class ApiDocumentationTests
             .GetProperty("parameters").EnumerateArray()
             .Single(parameter => parameter.GetProperty("name").GetString() == "status");
 
-        // Requests and responses both point at the one named component, so both get the meanings.
+        // Requests and responses both point at the one named component, so both get the same names.
         schemas.GetProperty("ChangeTaskStatusRequest").GetProperty("properties").GetProperty("status")
             .GetProperty("$ref").GetString().ShouldBe("#/components/schemas/TaskItemStatus");
         schemas.GetProperty("TaskResponse").GetProperty("properties").GetProperty("status")
@@ -55,47 +55,26 @@ public sealed class ApiDocumentationTests
 
         Values(schemas.GetProperty(nameof(TaskItemStatus))).ShouldBe(expected);
 
-        // Swashbuckle points the parameter at the same component, so it inherits the values.
+        // Swashbuckle points the parameter at the same component, so it inherits the names too.
         query.GetProperty("schema").GetProperty("$ref").GetString()
             .ShouldBe("#/components/schemas/TaskItemStatus");
 
-        ShouldExplainEveryStatus(schemas.GetProperty(nameof(TaskItemStatus)));
-        // Swagger UI renders the parameter's own description, not the component's, so the
-        // meanings have to reach the reader here too.
-        ShouldExplainEveryStatus(query);
-
-        // Swashbuckle writes the enum's own <summary> here first and EnumDocumentation.Describe has
-        // to keep it; without this, dropping the `existing` branch is a silent loss.
+        // The only description left on the schema is the enum's own <summary> - nothing appended,
+        // because there is no per-value meaning left to spell out.
         schemas.GetProperty(nameof(TaskItemStatus)).GetProperty("description").GetString()
-            .ShouldNotBeNull()
-            .Split('\n')[0].Trim()
             .ShouldBe("Where a task is in its lifecycle.");
 
+        // The endpoint still overrides the parameter's own description by hand (Swagger UI does not
+        // show a $ref target's description next to the field), so that much survives unrelated to
+        // the deleted legend apparatus.
         query.GetProperty("description").GetString().ShouldNotBeNullOrWhiteSpace();
     }
 
-    /// <summary>Asserts the description gives every status its number, its name and a meaning.</summary>
-    private static void ShouldExplainEveryStatus(JsonElement schema)
+    private static string[] Values(JsonElement schema)
     {
-        var description = schema.GetProperty("description").GetString().ShouldNotBeNull();
+        schema.GetProperty("type").GetString().ShouldBe("string");
 
-        foreach (var status in Enum.GetValues<TaskItemStatus>())
-        {
-            // The meaning is the half that would quietly go missing if the XML stopped being read,
-            // so the assertion is on the whole line rather than on the number and name alone.
-            var line = description.Split('\n')
-                .SingleOrDefault(candidate => candidate.StartsWith($"{(int)status} = {status}", StringComparison.Ordinal))
-                .ShouldNotBeNull($"{status} is not explained by: {description}");
-
-            line[$"{(int)status} = {status}".Length..].ShouldStartWith(" - ");
-        }
-    }
-
-    private static int[] Values(JsonElement schema)
-    {
-        schema.GetProperty("type").GetString().ShouldBe("integer");
-
-        return schema.GetProperty("enum").EnumerateArray().Select(value => value.GetInt32()).ToArray();
+        return schema.GetProperty("enum").EnumerateArray().Select(value => value.GetString()!).ToArray();
     }
 
     [Fact]

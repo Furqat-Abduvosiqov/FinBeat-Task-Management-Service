@@ -1,5 +1,4 @@
 using FinBeat.TaskManagement.Api.Endpoints.Validation;
-using FinBeat.TaskManagement.Api.OpenApi;
 using FinBeat.TaskManagement.Application.Results;
 using FinBeat.TaskManagement.Application.Tasks;
 using FinBeat.TaskManagement.Application.Tasks.Commands;
@@ -45,13 +44,9 @@ internal static class TaskEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .WithOpenApi(operation =>
             {
-                // A parameter $refs the documented component, and Swagger UI does not show a $ref target's
-                // description next to the field, so the legend is repeated here where a caller reads it.
-                Describe(
-                    operation,
-                    "status",
-                    "Return only tasks in this status. Omit for all of them.\n\n"
-                        + EnumDocumentation.Describe(typeof(TaskItemStatus)));
+                // A parameter $refs the documented component, and Swagger UI does not show a $ref
+                // target's description beside the field, so the parameter carries its own.
+                Describe(operation, "status", "Return only tasks in this status. Omit for all of them.");
                 Describe(operation, "page", "Which page to return, counting from one.");
                 Describe(
                     operation,
@@ -78,9 +73,8 @@ internal static class TaskEndpoints
             .WithName("ChangeTaskStatus")
             .WithSummary("Moves a task to another status")
             .WithDescription(
-                "Allowed moves: New to InProgress, Completed or Archived; InProgress to New, Completed or Archived; "
-                + "Completed to InProgress or Archived; Archived to New. Anything else is a conflict. Setting the "
-                + "status a task already holds changes nothing and raises no event.")
+                $"Allowed moves: {DescribeTransitions()}. Anything else is a conflict. Setting the status a "
+                + "task already holds changes nothing and raises no event.")
             .AddEndpointFilter<ValidationFilter<ChangeTaskStatusRequest>>()
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status404NotFound)
@@ -165,6 +159,30 @@ internal static class TaskEndpoints
         var result = await handler.HandleAsync(new DeleteTaskCommand(id), cancellationToken);
 
         return result.IsSuccess ? TypedResults.NoContent() : result.Error.ToProblem();
+    }
+
+    // Reads the transition matrix off TaskItemStatusRules instead of restating it in prose, so the
+    // published description cannot drift from rules the code has since changed.
+    private static string DescribeTransitions()
+    {
+        var statuses = Enum.GetValues<TaskItemStatus>();
+
+        var moves = statuses
+            .Select(from => (From: from, To: statuses.Where(to => TaskItemStatusRules.CanTransition(from, to))))
+            .Where(move => move.To.Any())
+            .Select(move => $"{move.From} to {JoinWithOr(move.To)}");
+
+        return string.Join("; ", moves);
+    }
+
+    // Joins the destinations of one move the way the sentence reads them: "A, B or C".
+    private static string JoinWithOr(IEnumerable<TaskItemStatus> destinations)
+    {
+        var names = destinations.Select(status => status.ToString()).ToArray();
+
+        return names.Length == 1
+            ? names[0]
+            : string.Join(", ", names[..^1]) + " or " + names[^1];
     }
 
     // Documents one parameter of an operation, if it has one by that name.

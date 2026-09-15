@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
@@ -6,7 +5,7 @@ using Microsoft.AspNetCore.WebUtilities;
 namespace FinBeat.TaskManagement.Api;
 
 /// <summary>Turns any unhandled exception into a 500 carrying RFC 9457 problem details.</summary>
-/// <remarks>The body is the same for every exception: what went wrong belongs in the log, and <c>traceId</c> is the handle that joins the two.</remarks>
+/// <remarks>The body is the same for every exception: what went wrong belongs in the log. <c>traceId</c>, the handle that joins the two, is added by <c>ProblemDetailsOptions.CustomizeProblemDetails</c> for every problem response, not only this one.</remarks>
 internal sealed class GlobalExceptionHandler(IProblemDetailsService problemDetailsService) : IExceptionHandler
 {
     /// <inheritdoc />
@@ -33,7 +32,6 @@ internal sealed class GlobalExceptionHandler(IProblemDetailsService problemDetai
                 Detail = malformedRequest is null
                     ? "An unexpected error occurred while processing the request."
                     : "The request could not be read.",
-                Extensions = { ["traceId"] = Activity.Current?.Id ?? httpContext.TraceIdentifier }
             }
         });
     }

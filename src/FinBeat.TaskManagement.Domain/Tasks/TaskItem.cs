@@ -7,7 +7,7 @@ namespace FinBeat.TaskManagement.Domain.Tasks;
 
 /// <summary>A task a user tracks, from creation through to completion, archival or deletion.</summary>
 /// <remarks>Drain DomainEvents before the save completes: EF detaches a deleted entity afterwards.</remarks>
-public sealed class TaskItem : AggregateRoot<TaskItemId>
+public sealed class TaskItem : AggregateRoot
 {
     /// <summary>Reserved for EF Core, which sets the properties by reflection afterwards.</summary>
     private TaskItem()
@@ -15,14 +15,17 @@ public sealed class TaskItem : AggregateRoot<TaskItemId>
     }
 
     private TaskItem(TaskItemId id, TaskTitle title, TaskDescription description, DateTimeOffset now)
-        : base(id)
     {
+        Id = id;
         Title = title;
         Description = description;
         Status = TaskItemStatus.New;
         CreatedAt = now;
         UpdatedAt = now;
     }
+
+    /// <summary>The task's identifier. Set once, never changed.</summary>
+    public TaskItemId Id { get; private set; }
 
     /// <summary>What the task is called.</summary>
     public TaskTitle Title { get; private set; } = null!;
