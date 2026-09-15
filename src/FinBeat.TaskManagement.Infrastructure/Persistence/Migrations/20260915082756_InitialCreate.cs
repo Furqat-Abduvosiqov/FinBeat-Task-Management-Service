@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinBeat.TaskManagement.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class AddMassTransitOutbox : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -49,6 +49,23 @@ namespace FinBeat.TaskManagement.Infrastructure.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_outbox_state", x => x.outbox_id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "tasks",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_tasks", x => x.id);
+                    table.CheckConstraint("ck_tasks_status", "status IN (1, 2, 3, 4)");
                 });
 
             migrationBuilder.CreateTable(
@@ -124,6 +141,11 @@ namespace FinBeat.TaskManagement.Infrastructure.Persistence.Migrations
                 name: "ix_outbox_state_created",
                 table: "outbox_state",
                 column: "created");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_tasks_status_created_at",
+                table: "tasks",
+                columns: new[] { "status", "created_at" });
         }
 
         /// <inheritdoc />
@@ -131,6 +153,9 @@ namespace FinBeat.TaskManagement.Infrastructure.Persistence.Migrations
         {
             migrationBuilder.DropTable(
                 name: "outbox_message");
+
+            migrationBuilder.DropTable(
+                name: "tasks");
 
             migrationBuilder.DropTable(
                 name: "inbox_state");
