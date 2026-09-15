@@ -18,11 +18,22 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
 
     /// <inheritdoc />
-    /// <remarks>Applied here so no caller that builds options can leave it out.</remarks>
+    /// <remarks>Applied here so no caller that builds options can leave it out - the host, the
+    /// design-time factory, the migrator and the test fixture all build their own options.</remarks>
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.UseSnakeCaseNamingConvention();
-        optionsBuilder.UseNpgsql(npgsql => npgsql.MigrationsHistoryTable(MigrationsHistoryTableName));
+        optionsBuilder.UseNpgsql(npgsql =>
+        {
+            npgsql.MigrationsHistoryTable(MigrationsHistoryTableName);
+
+            // A restarted or failed-over server terminates its backends, and Npgsql already counts
+            // that class of error (57P01, 57P02, 57P03, 53300) as transient. Without a retrying
+            // strategy the next use of a pooled connection surfaces the termination as a 500 the
+            // caller can do nothing about; with one the query simply runs again on a fresh
+            // connection. Managed PostgreSQL does exactly this during patching and failover.
+            npgsql.EnableRetryOnFailure();
+        });
 
         base.OnConfiguring(optionsBuilder);
     }
