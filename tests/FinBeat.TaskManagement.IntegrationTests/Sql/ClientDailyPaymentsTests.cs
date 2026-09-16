@@ -99,13 +99,52 @@ public sealed class ClientDailyPaymentsTests : IAsyncLifetime
         (await DailyPaymentsAsync(1, "2022-01-07", "2022-01-02")).ShouldBeEmpty();
     }
 
+    [Theory]
+    // Santiago, Tehran and Asuncion move their clocks at midnight, so local midnight is the
+    // instant that goes missing. Generating days as timestamptz drifts an hour at the first such
+    // transition and never recovers, which silently drops the last day and shifts every bucket.
+    [InlineData("America/Santiago")]
+    [InlineData("Asia/Tehran")]
+    [InlineData("America/Asuncion")]
+    [InlineData("UTC")]
+    public async Task A_range_crossing_a_midnight_dst_shift_still_returns_every_day(string timeZone)
+    {
+        var page = await DailyPaymentsAsync(1, "2016-01-01", "2024-12-31", timeZone);
+
+        page.Count.ShouldBe(new DateOnly(2024, 12, 31).DayNumber - new DateOnly(2016, 1, 1).DayNumber + 1);
+        page[^1].Date.ShouldBe(new DateOnly(2024, 12, 31));
+    }
+
+    [Fact]
+    public async Task A_payment_lands_on_its_own_calendar_day_whatever_the_session_time_zone()
+    {
+        // 00:30 is inside the hour that a midnight shift removes, and the range crosses one.
+        await ExecuteAsync("INSERT INTO client.payments (client_id, dt, amount) VALUES (3, '2024-03-10 00:30:00', 999);");
+
+        foreach (var timeZone in new[] { "UTC", "America/Santiago", "Asia/Tehran" })
+        {
+            var page = await DailyPaymentsAsync(3, "2016-01-01", "2024-03-11", timeZone);
+
+            page.Where(day => day.Amount != 0m)
+                .Select(day => day.Date)
+                .ShouldBe([new DateOnly(2024, 3, 10)], $"session time zone {timeZone}");
+        }
+    }
+
     private async Task<IReadOnlyList<(DateOnly Date, decimal Amount)>> DailyPaymentsAsync(
         long clientId,
         string from,
-        string to)
+        string to,
+        string? timeZone = null)
     {
         await using var connection = new NpgsqlConnection(_database.GetConnectionString());
         await connection.OpenAsync();
+
+        if (timeZone is not null)
+        {
+            await using var session = new NpgsqlCommand($"SET TIME ZONE '{timeZone}';", connection);
+            await session.ExecuteNonQueryAsync();
+        }
 
         await using var command = new NpgsqlCommand(
             "SELECT dt, amount FROM client.get_daily_payments(@client, @from, @to)",

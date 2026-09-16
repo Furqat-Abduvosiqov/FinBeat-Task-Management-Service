@@ -20,13 +20,17 @@ LANGUAGE sql
 STABLE
 PARALLEL SAFE
 AS $$
-    SELECT days.dt::date,
-           COALESCE(SUM(payments.amount), 0)::numeric(19, 4)
-    FROM generate_series(p_start_date, p_end_date, INTERVAL '1 day') AS days(dt)
-    LEFT JOIN client.payments
-           ON payments.client_id = p_client_id
-          AND payments.dt >= days.dt
-          AND payments.dt <  days.dt + INTERVAL '1 day'
-    GROUP BY days.dt
-    ORDER BY days.dt;
+    WITH daily AS (
+        SELECT payments.dt::date AS day,
+               SUM(payments.amount) AS total
+        FROM client.payments
+        WHERE payments.client_id = p_client_id
+          AND payments.dt >= p_start_date
+          AND payments.dt <  p_end_date + 1
+        GROUP BY 1)
+    SELECT days.day::date,
+           COALESCE(daily.total, 0)::numeric(19, 4)
+    FROM generate_series(p_start_date::timestamp, p_end_date::timestamp, INTERVAL '1 day') AS days(day)
+    LEFT JOIN daily ON daily.day = days.day::date
+    ORDER BY days.day;
 $$;

@@ -36,13 +36,19 @@ RETURN
              SELECT TOP (CASE WHEN DATEDIFF(day, @Sd, @Ed) < 0 THEN 0 ELSE DATEDIFF(day, @Sd, @Ed) + 1 END)
                     DATEADD(day, ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1, @Sd)
              FROM N5
+         ),
+         Daily (Dt, Total) AS
+         (
+             SELECT CAST(p.Dt AS date),
+                    SUM(p.Amount)
+             FROM client.Payments AS p
+             WHERE p.ClientId = @ClientId
+               AND p.Dt >= @Sd
+               AND p.Dt <  DATEADD(day, 1, @Ed)
+             GROUP BY CAST(p.Dt AS date)
          )
     SELECT Days.Dt,
-           Amount = ISNULL(SUM(p.Amount), 0)
+           Amount = ISNULL(Daily.Total, 0)
     FROM Days
-    LEFT JOIN client.Payments AS p
-           ON p.ClientId = @ClientId
-          AND p.Dt >= CAST(Days.Dt AS datetime2(0))
-          AND p.Dt <  DATEADD(day, 1, CAST(Days.Dt AS datetime2(0)))
-    GROUP BY Days.Dt;
+    LEFT JOIN Daily ON Daily.Dt = Days.Dt;
 GO
