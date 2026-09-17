@@ -12,6 +12,7 @@ IF OBJECT_ID('client.Payments') IS NULL
     );
 GO
 
+-- Покрывающий индекс: равенство по клиенту, диапазон по дате, сумма в INCLUDE.
 IF INDEXPROPERTY(OBJECT_ID('client.Payments'), 'IX_Payments_ClientId_Dt', 'IndexID') IS NULL
     CREATE INDEX IX_Payments_ClientId_Dt ON client.Payments (ClientId, Dt) INCLUDE (Amount);
 GO
@@ -25,30 +26,27 @@ CREATE OR ALTER FUNCTION client.GetDailyPayments
 RETURNS TABLE
 AS
 RETURN
-    WITH N0 (n) AS (SELECT 1 UNION ALL SELECT 1),
-         N1 (n) AS (SELECT 1 FROM N0 a CROSS JOIN N0 b),
-         N2 (n) AS (SELECT 1 FROM N1 a CROSS JOIN N1 b),
-         N3 (n) AS (SELECT 1 FROM N2 a CROSS JOIN N2 b),
-         N4 (n) AS (SELECT 1 FROM N3 a CROSS JOIN N3 b),
-         N5 (n) AS (SELECT 1 FROM N4 a CROSS JOIN N4 b),
-         Days (Dt) AS
-         (
-             SELECT TOP (CASE WHEN DATEDIFF(day, @Sd, @Ed) < 0 THEN 0 ELSE DATEDIFF(day, @Sd, @Ed) + 1 END)
-                    DATEADD(day, ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1, @Sd)
-             FROM N5
-         ),
-         Daily (Dt, Total) AS
-         (
-             SELECT CAST(p.Dt AS date),
-                    SUM(p.Amount)
-             FROM client.Payments AS p
-             WHERE p.ClientId = @ClientId
-               AND p.Dt >= @Sd
-               AND p.Dt <  DATEADD(day, 1, @Ed)
-             GROUP BY CAST(p.Dt AS date)
-         )
-    SELECT Days.Dt,
-           Amount = ISNULL(Daily.Total, 0)
-    FROM Days
-    LEFT JOIN Daily ON Daily.Dt = Days.Dt;
+   WITH Days (Dt) AS
+    (
+    -- Шаг указан явно: при start > stop он по умолчанию -1, и обратный  интервал вернул бы строки вместо пустого результата.
+    -- ISNULL — страховка от NULL в параметрах: -1 даёт пустой набор.
+    SELECT DATEADD(day, g.value, @Sd)
+    FROM GENERATE_SERIES(0, ISNULL(DATEDIFF(day, @Sd, @Ed), -1), 1) AS g
+    ),
+    Daily (Dt, Total) AS
+    (
+    -- Один диапазонный поиск по индексу на весь период,
+    -- а не поиск на каждый день интервала.
+    SELECT CAST(p.Dt AS date),
+    SUM(p.Amount)
+    FROM client.Payments AS p
+    WHERE p.ClientId = @ClientId
+    AND p.Dt >= @Sd
+    AND p.Dt <  DATEADD(day, 1, @Ed)   -- полуинтервал: Ed включён целиком
+    GROUP BY CAST(p.Dt AS date)
+    )
+SELECT Days.Dt,
+       Amount = ISNULL(Daily.Total, 0)   -- день без платежей -> 0
+FROM Days
+         LEFT JOIN Daily ON Daily.Dt = Days.Dt;
 GO
